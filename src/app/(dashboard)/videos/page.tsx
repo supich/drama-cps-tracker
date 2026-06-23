@@ -14,6 +14,13 @@ import {
 } from '@/components/ui/select'
 import { formatNumber, getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { Video, Plus, Search, Play, Clock } from 'lucide-react'
 
 interface VideoData {
@@ -38,11 +45,29 @@ interface VideoData {
   }
 }
 
+interface Drama {
+  id: string
+  dramaName: string
+}
+
 export default function VideosPage() {
   const [videos, setVideos] = useState<VideoData[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [dramas, setDramas] = useState<Drama[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({
+    dramaId: '',
+    title: '',
+    description: '',
+    fileUrl: '',
+    coverUrl: '',
+    duration: '',
+    language: 'zh',
+    tags: '',
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -66,6 +91,59 @@ export default function VideosPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchDramas = async () => {
+    try {
+      const response = await fetch('/api/dramas?limit=100')
+      const result = await response.json()
+      if (result.success) setDramas(result.data.dramas)
+    } catch {}
+  }
+
+  const handleOpenUpload = () => {
+    fetchDramas()
+    setForm({ dramaId: '', title: '', description: '', fileUrl: '', coverUrl: '', duration: '', language: 'zh', tags: '' })
+    setIsUploadOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.dramaId || !form.title || !form.fileUrl) {
+      toast({ title: '错误', description: '请填写必填项（剧集、标题、视频链接）', variant: 'destructive' })
+      return
+    }
+    try {
+      setSubmitting(true)
+      const body: Record<string, unknown> = {
+        dramaId: form.dramaId,
+        title: form.title,
+        fileUrl: form.fileUrl,
+        language: form.language,
+      }
+      if (form.description) body.description = form.description
+      if (form.coverUrl) body.coverUrl = form.coverUrl
+      if (form.duration) body.duration = parseInt(form.duration)
+      if (form.tags) body.tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
+
+      const response = await fetch('/api/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const result = await response.json()
+      if (result.success) {
+        toast({ title: '成功', description: '视频已创建' })
+        setIsUploadOpen(false)
+        fetchVideos()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '创建失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '操作失败', variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -93,11 +171,110 @@ export default function VideosPage() {
             管理您的视频素材
           </p>
         </div>
-        <Button>
+        <Button onClick={handleOpenUpload}>
           <Plus className="mr-2 h-4 w-4" />
           上传视频
         </Button>
       </div>
+
+      {/* Upload Dialog */}
+      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>上传视频</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+            <div className="space-y-1">
+              <Label>所属剧集 <span className="text-red-500">*</span></Label>
+              <Select value={form.dramaId} onValueChange={v => setForm(f => ({ ...f, dramaId: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择剧集" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dramas.length === 0 && (
+                    <SelectItem value="__none" disabled>暂无剧集，请先创建剧集</SelectItem>
+                  )}
+                  {dramas.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.dramaName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>视频标题 <span className="text-red-500">*</span></Label>
+              <Input
+                placeholder="输入视频标题"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>视频链接 <span className="text-red-500">*</span></Label>
+              <Input
+                placeholder="https://example.com/video.mp4"
+                value={form.fileUrl}
+                onChange={e => setForm(f => ({ ...f, fileUrl: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>封面图链接</Label>
+              <Input
+                placeholder="https://example.com/cover.jpg"
+                value={form.coverUrl}
+                onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>描述</Label>
+              <Input
+                placeholder="视频简介（可选）"
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>时长（秒）</Label>
+                <Input
+                  type="number"
+                  placeholder="如 120"
+                  value={form.duration}
+                  onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
+                  min={1}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>语言</Label>
+                <Select value={form.language} onValueChange={v => setForm(f => ({ ...f, language: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="pt">Português</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>标签（逗号分隔）</Label>
+              <Input
+                placeholder="剧情, 爱情, 古装"
+                value={form.tags}
+                onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsUploadOpen(false)}>取消</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? '创建中...' : '创建视频'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
