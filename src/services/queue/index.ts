@@ -21,67 +21,82 @@ export const QUEUE_NAMES = {
   PAGE_HEALTH: 'page-health',
 } as const
 
-// 创建队列实例
-export const publishQueue = new Queue(QUEUE_NAMES.PUBLISH_VIDEO, {
-  connection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000 * 60, // 1分钟
-    },
-    removeOnComplete: {
-      age: 24 * 3600, // 保留24小时
-      count: 1000, // 最多保留1000个
-    },
-    removeOnFail: {
-      age: 7 * 24 * 3600, // 保留7天
-    },
-  },
-})
+// ── 懒加载队列实例（避免构建阶段触发 Redis 连接）──────────────────────────
 
-export const insightsQueue = new Queue(QUEUE_NAMES.SYNC_INSIGHTS, {
-  connection,
-  defaultJobOptions: {
-    attempts: 2,
-    backoff: {
-      type: 'exponential',
-      delay: 1000 * 60 * 5, // 5分钟
-    },
-    removeOnComplete: true,
-    removeOnFail: {
-      age: 3 * 24 * 3600,
-    },
-  },
-})
+let _publishQueue: Queue | undefined
+let _insightsQueue: Queue | undefined
+let _healthQueue: Queue | undefined
+let _publishQueueEvents: QueueEvents | undefined
+let _insightsQueueEvents: QueueEvents | undefined
+let _healthQueueEvents: QueueEvents | undefined
 
-export const healthQueue = new Queue(QUEUE_NAMES.PAGE_HEALTH, {
-  connection,
-  defaultJobOptions: {
-    attempts: 2,
-    backoff: {
-      type: 'exponential',
-      delay: 1000 * 60 * 10, // 10分钟
-    },
-    removeOnComplete: true,
-    removeOnFail: {
-      age: 3 * 24 * 3600,
-    },
-  },
-})
+function getPublishQueue(): Queue {
+  if (!_publishQueue) {
+    _publishQueue = new Queue(QUEUE_NAMES.PUBLISH_VIDEO, {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 * 60 },
+        removeOnComplete: { age: 24 * 3600, count: 1000 },
+        removeOnFail: { age: 7 * 24 * 3600 },
+      },
+    })
+  }
+  return _publishQueue
+}
 
-// 队列事件监听器
-export const publishQueueEvents = new QueueEvents(QUEUE_NAMES.PUBLISH_VIDEO, {
-  connection,
-})
+function getInsightsQueue(): Queue {
+  if (!_insightsQueue) {
+    _insightsQueue = new Queue(QUEUE_NAMES.SYNC_INSIGHTS, {
+      connection,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 1000 * 60 * 5 },
+        removeOnComplete: true,
+        removeOnFail: { age: 3 * 24 * 3600 },
+      },
+    })
+  }
+  return _insightsQueue
+}
 
-export const insightsQueueEvents = new QueueEvents(QUEUE_NAMES.SYNC_INSIGHTS, {
-  connection,
-})
+function getHealthQueue(): Queue {
+  if (!_healthQueue) {
+    _healthQueue = new Queue(QUEUE_NAMES.PAGE_HEALTH, {
+      connection,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 1000 * 60 * 10 },
+        removeOnComplete: true,
+        removeOnFail: { age: 3 * 24 * 3600 },
+      },
+    })
+  }
+  return _healthQueue
+}
 
-export const healthQueueEvents = new QueueEvents(QUEUE_NAMES.PAGE_HEALTH, {
-  connection,
-})
+export function getPublishQueueEvents(): QueueEvents {
+  if (!_publishQueueEvents) {
+    _publishQueueEvents = new QueueEvents(QUEUE_NAMES.PUBLISH_VIDEO, { connection })
+  }
+  return _publishQueueEvents
+}
+
+export function getInsightsQueueEvents(): QueueEvents {
+  if (!_insightsQueueEvents) {
+    _insightsQueueEvents = new QueueEvents(QUEUE_NAMES.SYNC_INSIGHTS, { connection })
+  }
+  return _insightsQueueEvents
+}
+
+export function getHealthQueueEvents(): QueueEvents {
+  if (!_healthQueueEvents) {
+    _healthQueueEvents = new QueueEvents(QUEUE_NAMES.PAGE_HEALTH, { connection })
+  }
+  return _healthQueueEvents
+}
+
+// ── 公开的队列操作函数 ─────────────────────────────────────────────────────
 
 // 添加发布任务到队列
 export async function addPublishJob(data: {
@@ -94,8 +109,7 @@ export async function addPublishJob(data: {
   const delay = data.scheduledAt
     ? Math.max(0, data.scheduledAt.getTime() - Date.now())
     : 0
-  
-  return publishQueue.add('publish-video', data, {
+  return getPublishQueue().add('publish-video', data, {
     jobId: `publish-${data.taskId}`,
     delay,
   })
@@ -107,7 +121,7 @@ export async function addInsightsJob(data: {
   pageId: string
   pageAccessToken: string
 }) {
-  return insightsQueue.add('sync-insights', data, {
+  return getInsightsQueue().add('sync-insights', data, {
     jobId: `insights-${data.postId}`,
   })
 }
@@ -117,7 +131,7 @@ export async function addHealthCheckJob(data: {
   pageId: string
   pageAccessToken: string
 }) {
-  return healthQueue.add('page-health', data, {
+  return getHealthQueue().add('page-health', data, {
     jobId: `health-${data.pageId}`,
   })
 }
@@ -138,68 +152,44 @@ export async function addBatchPublishJobs(tasks: Array<{
       delay: Math.max(0, task.scheduledAt.getTime() - Date.now()),
     },
   }))
-  
-  return publishQueue.addBulk(jobs)
+  return getPublishQueue().addBulk(jobs)
 }
 
 // 获取队列状态
 export async function getQueueStatus() {
-  const [publishWaiting, publishActive, publishDelayed, publishCompleted, publishFailed] =
-    await Promise.all([
-      publishQueue.getWaitingCount(),
-      publishQueue.getActiveCount(),
-      publishQueue.getDelayedCount(),
-      publishQueue.getCompletedCount(),
-      publishQueue.getFailedCount(),
-    ])
-  
-  const [insightsWaiting, insightsActive] = await Promise.all([
-    insightsQueue.getWaitingCount(),
-    insightsQueue.getActiveCount(),
+  const pq = getPublishQueue()
+  const iq = getInsightsQueue()
+  const hq = getHealthQueue()
+
+  const [
+    publishWaiting, publishActive, publishDelayed, publishCompleted, publishFailed,
+    insightsWaiting, insightsActive,
+    healthWaiting, healthActive,
+  ] = await Promise.all([
+    pq.getWaitingCount(),
+    pq.getActiveCount(),
+    pq.getDelayedCount(),
+    pq.getCompletedCount(),
+    pq.getFailedCount(),
+    iq.getWaitingCount(),
+    iq.getActiveCount(),
+    hq.getWaitingCount(),
+    hq.getActiveCount(),
   ])
-  
-  const [healthWaiting, healthActive] = await Promise.all([
-    healthQueue.getWaitingCount(),
-    healthQueue.getActiveCount(),
-  ])
-  
+
   return {
-    publish: {
-      waiting: publishWaiting,
-      active: publishActive,
-      delayed: publishDelayed,
-      completed: publishCompleted,
-      failed: publishFailed,
-    },
-    insights: {
-      waiting: insightsWaiting,
-      active: insightsActive,
-    },
-    health: {
-      waiting: healthWaiting,
-      active: healthActive,
-    },
+    publish: { waiting: publishWaiting, active: publishActive, delayed: publishDelayed, completed: publishCompleted, failed: publishFailed },
+    insights: { waiting: insightsWaiting, active: insightsActive },
+    health: { waiting: healthWaiting, active: healthActive },
   }
 }
 
 // 清理队列
 export async function cleanQueues() {
   await Promise.all([
-    publishQueue.clean(24 * 3600 * 1000, 100, 'completed'),
-    publishQueue.clean(7 * 24 * 3600 * 1000, 100, 'failed'),
-    insightsQueue.clean(24 * 3600 * 1000, 50, 'completed'),
-    healthQueue.clean(24 * 3600 * 1000, 50, 'completed'),
-  ])
-}
-
-// 关闭队列连接
-export async function closeQueues() {
-  await Promise.all([
-    publishQueue.close(),
-    insightsQueue.close(),
-    healthQueue.close(),
-    publishQueueEvents.close(),
-    insightsQueueEvents.close(),
-    healthQueueEvents.close(),
+    getPublishQueue().clean(24 * 3600 * 1000, 100, 'completed'),
+    getPublishQueue().clean(7 * 24 * 3600 * 1000, 100, 'failed'),
+    getInsightsQueue().clean(24 * 3600 * 1000, 50, 'completed'),
+    getHealthQueue().clean(24 * 3600 * 1000, 50, 'completed'),
   ])
 }
