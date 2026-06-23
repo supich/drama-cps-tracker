@@ -107,8 +107,8 @@ export default function SchedulerPage() {
       if (tasksResult.success) setTasks(tasksResult.data.tasks || [])
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch data',
+        title: '错误',
+        description: '获取数据失败',
         variant: 'destructive',
       })
     } finally {
@@ -118,11 +118,11 @@ export default function SchedulerPage() {
 
   const handleCreateBatchTasks = async () => {
     if (selectedVariants.length === 0) {
-      toast({ title: 'Error', description: 'Please select at least one variant', variant: 'destructive' })
+      toast({ title: '错误', description: '请至少选择一个剪辑版本', variant: 'destructive' })
       return
     }
     if (selectedPages.length === 0) {
-      toast({ title: 'Error', description: 'Please select at least one page', variant: 'destructive' })
+      toast({ title: '错误', description: '请至少选择一个主页', variant: 'destructive' })
       return
     }
 
@@ -146,8 +146,8 @@ export default function SchedulerPage() {
 
       if (result.success) {
         toast({
-          title: 'Success',
-          description: `Created ${result.data.created} publish tasks`,
+          title: '成功',
+          description: `已创建 ${result.data.created} 个发布任务`,
         })
         setIsDialogOpen(false)
         fetchData()
@@ -155,15 +155,15 @@ export default function SchedulerPage() {
         setSelectedPages([])
       } else {
         toast({
-          title: 'Error',
-          description: result.error?.message || 'Failed to create tasks',
+          title: '错误',
+          description: result.error?.message || '创建任务失败',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to create batch tasks',
+        title: '错误',
+        description: '创建批量任务失败',
         variant: 'destructive',
       })
     }
@@ -215,33 +215,33 @@ export default function SchedulerPage() {
   }
 
   const weekDays = getWeekDays()
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Scheduler</h1>
+          <h1 className="text-3xl font-bold">发布计划</h1>
           <p className="text-muted-foreground">
-            Schedule and manage your publishing tasks
+            安排并管理您的发布任务
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Create Batch Tasks
+              创建批量任务
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Batch Publish Tasks</DialogTitle>
+              <DialogTitle>创建批量发布任务</DialogTitle>
             </DialogHeader>
             <div className="space-y-6">
               {/* Select Variants */}
               <div className="space-y-2">
-                <Label>Select Variants ({selectedVariants.length} selected)</Label>
+                <Label>选择剪辑版本（已选 {selectedVariants.length} 个）</Label>
                 <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
                   {variants.map(variant => (
                     <div key={variant.id} className="flex items-center space-x-2">
@@ -269,7 +269,7 @@ export default function SchedulerPage() {
 
               {/* Select Pages */}
               <div className="space-y-2">
-                <Label>Select Pages ({selectedPages.length} selected)</Label>
+                <Label>选择主页（已选 {selectedPages.length} 个）</Label>
                 <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
                   {pages.filter(p => p.status === 'ACTIVE').map(page => (
                     <div key={page.id} className="flex items-center space-x-2">
@@ -290,7 +290,7 @@ export default function SchedulerPage() {
                       >
                         {page.pageName}
                         <Badge variant="outline" className="text-xs">
-                          Health: {page.healthScore}
+                          健康度：{page.healthScore}
                         </Badge>
                       </label>
                     </div>
@@ -301,7 +301,7 @@ export default function SchedulerPage() {
               {/* Date Range */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>开始日期</Label>
                   <Input
                     type="date"
                     value={startDate}
@@ -309,7 +309,7 @@ export default function SchedulerPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End Date</Label>
+                  <Label>结束日期</Label>
                   <Input
                     type="date"
                     value={endDate}
@@ -321,7 +321,7 @@ export default function SchedulerPage() {
               {/* Stagger Settings */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Min Stagger (minutes)</Label>
+                  <Label>最小间隔（分钟）</Label>
                   <Input
                     type="number"
                     value={staggerMin}
@@ -331,7 +331,7 @@ export default function SchedulerPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Max Stagger (minutes)</Label>
+                  <Label>最大间隔（分钟）</Label>
                   <Input
                     type="number"
                     value={staggerMax}
@@ -345,7 +345,7 @@ export default function SchedulerPage() {
               {/* Publish Hours */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Publish Hours Start</Label>
+                  <Label>发布开始时段</Label>
                   <Input
                     type="number"
                     value={publishHoursStart}
@@ -355,7 +355,7 @@ export default function SchedulerPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Publish Hours End</Label>
+                  <Label>发布结束时段</Label>
                   <Input
                     type="number"
                     value={publishHoursEnd}
@@ -367,7 +367,7 @@ export default function SchedulerPage() {
               </div>
 
               <Button onClick={handleCreateBatchTasks} className="w-full">
-                Create Tasks
+                创建任务
               </Button>
             </div>
           </DialogContent>
@@ -381,21 +381,21 @@ export default function SchedulerPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-lg font-semibold">
-            {weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {weekDays[0].toLocaleDateString('zh-CN', { month: 'long', year: 'numeric' })}
           </h2>
           <Button variant="outline" size="sm" onClick={goToNextWeek}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
         <Button variant="outline" size="sm" onClick={goToToday}>
-          Today
+          今天
         </Button>
       </div>
 
       {/* Calendar View */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading scheduler...</div>
+          <div className="text-muted-foreground">正在加载日历...</div>
         </div>
       ) : (
         <div className="grid grid-cols-7 gap-2">
@@ -432,7 +432,7 @@ export default function SchedulerPage() {
                     >
                       <div className="font-medium">{task.variant.variantName}</div>
                       <div className="text-muted-foreground">
-                        {new Date(task.scheduledAt).toLocaleTimeString('en-US', {
+                        {new Date(task.scheduledAt).toLocaleTimeString('zh-CN', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
@@ -441,7 +441,7 @@ export default function SchedulerPage() {
                   ))}
                   {dayTasks.length > 3 && (
                     <div className="text-xs text-muted-foreground text-center">
-                      +{dayTasks.length - 3} more
+                      +{dayTasks.length - 3} 更多
                     </div>
                   )}
                 </CardContent>
@@ -454,7 +454,7 @@ export default function SchedulerPage() {
       {/* Upcoming Tasks Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Upcoming Tasks</CardTitle>
+          <CardTitle>即将发布任务</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -484,7 +484,7 @@ export default function SchedulerPage() {
               ))}
             {tasks.filter(t => t.status === 'PENDING').length === 0 && (
               <p className="text-muted-foreground text-center py-4">
-                No upcoming tasks
+                暂无待发布任务
               </p>
             )}
           </div>

@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
       if (timeResult.success) setStatsByTime(timeResult.data)
     } catch (error) {
       toast({
-        title: 'Error',
+        title: '错误',
         description: 'Failed to fetch analytics',
         variant: 'destructive',
       })
@@ -122,10 +122,10 @@ export default function AnalyticsPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
       
-      toast({ title: 'Success', description: 'Export started' })
+      toast({ title: '导出成功', description: '文件已开始下载' })
     } catch (error) {
       toast({
-        title: 'Error',
+        title: '错误',
         description: 'Failed to export data',
         variant: 'destructive',
       })
@@ -150,9 +150,9 @@ export default function AnalyticsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
+          <h1 className="text-3xl font-bold">数据分析</h1>
           <p className="text-muted-foreground">
-            Track your publishing performance and revenue
+            追踪发布表现与收益数据
           </p>
         </div>
         <div className="flex gap-2">
@@ -161,15 +161,15 @@ export default function AnalyticsPage() {
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="14">Last 14 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="7">过去 7 天</SelectItem>
+              <SelectItem value="14">过去 14 天</SelectItem>
+              <SelectItem value="30">过去 30 天</SelectItem>
+              <SelectItem value="90">过去 90 天</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={() => handleExport(activeTab)}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            导出 CSV
           </Button>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <CardTitle className="text-sm font-medium">播放总量</CardTitle>
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -188,7 +188,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
+            <CardTitle className="text-sm font-medium">点击总数</CardTitle>
             <MousePointerClick className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
+            <CardTitle className="text-sm font-medium">转化数</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">收益</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -221,7 +221,7 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reactions</CardTitle>
+            <CardTitle className="text-sm font-medium">点赞</CardTitle>
             <ThumbsUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -231,7 +231,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comments</CardTitle>
+            <CardTitle className="text-sm font-medium">评论</CardTitle>
             <MessageCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Shares</CardTitle>
+            <CardTitle className="text-sm font-medium">分享</CardTitle>
             <Share2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
           }`}
           onClick={() => setActiveTab('pages')}
         >
-          By Page
+          按主页
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -270,7 +270,7 @@ export default function AnalyticsPage() {
           }`}
           onClick={() => setActiveTab('dramas')}
         >
-          By Drama
+          按剧集
         </button>
         <button
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -280,14 +280,14 @@ export default function AnalyticsPage() {
           }`}
           onClick={() => setActiveTab('time')}
         >
-          Over Time
+          按时间
         </button>
       </div>
 
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading analytics...</div>
+          <div className="text-muted-foreground">正在加载分析数据...</div>
         </div>
       ) : (
         <>
@@ -295,12 +295,12 @@ export default function AnalyticsPage() {
           {activeTab === 'pages' && (
             <Card>
               <CardHeader>
-                <CardTitle>Performance by Page</CardTitle>
+                <CardTitle>按主页表现</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {statsByPage.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No data available</p>
+                    <p className="text-muted-foreground text-center py-8">暂无数据</p>
                   ) : (
                     statsByPage.map((page) => (
                       <div key={page.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -312,19 +312,19 @@ export default function AnalyticsPage() {
                         </div>
                         <div className="grid grid-cols-4 gap-8 text-center">
                           <div>
-                            <p className="text-sm text-muted-foreground">Views</p>
+                            <p className="text-sm text-muted-foreground">播放量</p>
                             <p className="font-medium">{formatNumber(page.stats?.views || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Clicks</p>
+                            <p className="text-sm text-muted-foreground">点击</p>
                             <p className="font-medium">{formatNumber(page.stats?.clicks || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Conversions</p>
+                            <p className="text-sm text-muted-foreground">转化</p>
                             <p className="font-medium">{formatNumber(page.stats?.conversions || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Revenue</p>
+                            <p className="text-sm text-muted-foreground">收益</p>
                             <p className="font-medium">{formatCurrency(page.stats?.revenue || 0)}</p>
                           </div>
                         </div>
@@ -340,36 +340,36 @@ export default function AnalyticsPage() {
           {activeTab === 'dramas' && (
             <Card>
               <CardHeader>
-                <CardTitle>Performance by Drama</CardTitle>
+                <CardTitle>按剧集表现</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {statsByDrama.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No data available</p>
+                    <p className="text-muted-foreground text-center py-8">暂无数据</p>
                   ) : (
                     statsByDrama.map((drama) => (
                       <div key={drama.dramaId} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h3 className="font-medium">{drama.dramaName}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {drama.videoCount} videos
+                            {drama.videoCount} 个视频
                           </p>
                         </div>
                         <div className="grid grid-cols-4 gap-8 text-center">
                           <div>
-                            <p className="text-sm text-muted-foreground">Views</p>
+                            <p className="text-sm text-muted-foreground">播放量</p>
                             <p className="font-medium">{formatNumber(drama.stats?.views || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Clicks</p>
+                            <p className="text-sm text-muted-foreground">点击</p>
                             <p className="font-medium">{formatNumber(drama.stats?.clicks || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Conversions</p>
+                            <p className="text-sm text-muted-foreground">转化</p>
                             <p className="font-medium">{formatNumber(drama.stats?.conversions || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Revenue</p>
+                            <p className="text-sm text-muted-foreground">收益</p>
                             <p className="font-medium">{formatCurrency(drama.stats?.revenue || 0)}</p>
                           </div>
                         </div>
@@ -385,21 +385,21 @@ export default function AnalyticsPage() {
           {activeTab === 'time' && (
             <Card>
               <CardHeader>
-                <CardTitle>Performance Over Time</CardTitle>
+                <CardTitle>按时间表现</CardTitle>
               </CardHeader>
               <CardContent>
                 {statsByTime.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No data available</p>
+                  <p className="text-muted-foreground text-center py-8">暂无数据</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-4 font-medium">Date</th>
-                          <th className="text-right py-2 px-4 font-medium">Views</th>
-                          <th className="text-right py-2 px-4 font-medium">Clicks</th>
-                          <th className="text-right py-2 px-4 font-medium">Conversions</th>
-                          <th className="text-right py-2 px-4 font-medium">Revenue</th>
+                          <th className="text-left py-2 px-4 font-medium">日期</th>
+                          <th className="text-right py-2 px-4 font-medium">播放量</th>
+                          <th className="text-right py-2 px-4 font-medium">点击</th>
+                          <th className="text-right py-2 px-4 font-medium">转化</th>
+                          <th className="text-right py-2 px-4 font-medium">收益</th>
                         </tr>
                       </thead>
                       <tbody>

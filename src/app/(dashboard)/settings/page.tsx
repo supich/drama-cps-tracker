@@ -16,14 +16,14 @@ interface SystemSetting {
 }
 
 const defaultSettings: SystemSetting[] = [
-  { key: 'DAILY_POST_LIMIT', value: '10', description: 'Default daily post limit per page' },
-  { key: 'MIN_STAGGER_INTERVAL', value: '15', description: 'Minimum stagger interval in minutes' },
-  { key: 'MAX_STAGGER_INTERVAL', value: '90', description: 'Maximum stagger interval in minutes' },
-  { key: 'MAX_RETRY_COUNT', value: '2', description: 'Maximum retry count for failed tasks' },
-  { key: 'CONSECUTIVE_FAIL_THRESHOLD', value: '3', description: 'Consecutive failures to pause page' },
-  { key: 'HEALTH_SCORE_THRESHOLD', value: '60', description: 'Minimum health score to continue publishing' },
-  { key: 'INSIGHTS_SYNC_INTERVAL', value: '30', description: 'Insights sync interval in minutes' },
-  { key: 'HEALTH_CHECK_INTERVAL', value: '60', description: 'Health check interval in minutes' },
+  { key: 'DAILY_POST_LIMIT', value: '10', description: '每个主页每日默认发布上限' },
+  { key: 'MIN_STAGGER_INTERVAL', value: '15', description: '最小间隔时间（分钟）' },
+  { key: 'MAX_STAGGER_INTERVAL', value: '90', description: '最大间隔时间（分钟）' },
+  { key: 'MAX_RETRY_COUNT', value: '2', description: '失败任务最大重试次数' },
+  { key: 'CONSECUTIVE_FAIL_THRESHOLD', value: '3', description: '连续失败多少次后暂停主页' },
+  { key: 'HEALTH_SCORE_THRESHOLD', value: '60', description: '继续发布所需最低健康分' },
+  { key: 'INSIGHTS_SYNC_INTERVAL', value: '30', description: '数据同步间隔（分钟）' },
+  { key: 'HEALTH_CHECK_INTERVAL', value: '60', description: '健康检查间隔（分钟）' },
 ]
 
 export default function SettingsPage() {
@@ -42,13 +42,13 @@ export default function SettingsPage() {
       // 这里应该调用API保存设置到数据库
       // 为简化示例，我们只显示成功消息
       toast({
-        title: 'Success',
-        description: 'Settings saved successfully',
+        title: '保存成功',
+        description: '设置已保存',
       })
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to save settings',
+        title: '错误',
+        description: '保存设置失败',
         variant: 'destructive',
       })
     } finally {
@@ -59,8 +59,8 @@ export default function SettingsPage() {
   const handleResetToDefault = () => {
     setSettings(defaultSettings)
     toast({
-      title: 'Settings reset',
-      description: 'Settings have been reset to default values',
+      title: '已重置',
+      description: '设置已恢复默认値',
     })
   }
 
@@ -69,19 +69,19 @@ export default function SettingsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <h1 className="text-3xl font-bold">系统设置</h1>
           <p className="text-muted-foreground">
-            Configure system settings and risk control rules
+            配置系统参数与风控规则
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleResetToDefault}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Reset to Default
+            恢复默认
           </Button>
           <Button onClick={handleSaveSettings} disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? '保存中...' : '保存设置'}
           </Button>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Publishing Limits
+              发布限制
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -117,7 +117,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Risk Control
+              风控规则
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -141,7 +141,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Sync Intervals
+              同步间隔
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -165,33 +165,33 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Notifications
+              通知设置
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Email Notifications</Label>
+                <Label>邮件通知</Label>
                 <p className="text-sm text-muted-foreground">
-                  Send email alerts for failed tasks
+                  任务失败时发送邮件警报
                 </p>
               </div>
               <Switch />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label>Slack Notifications</Label>
+                <Label>Slack 通知</Label>
                 <p className="text-sm text-muted-foreground">
-                  Send Slack alerts for critical issues
+                  重要问题发送 Slack 警报
                 </p>
               </div>
               <Switch />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label>Daily Summary</Label>
+                <Label>每日汇总</Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive daily performance summary
+                  接收每日表现汇总报告
                 </p>
               </div>
               <Switch />
@@ -203,7 +203,7 @@ export default function SettingsPage() {
       {/* Current Environment Variables */}
       <Card>
         <CardHeader>
-          <CardTitle>Environment Variables</CardTitle>
+          <CardTitle>环境变量</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -234,8 +234,7 @@ export default function SettingsPage() {
           </div>
           <div className="mt-4 p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              Note: Environment variables are loaded from .env file. 
-              Changes to settings above are stored in the database and will override these defaults.
+              注：环境变量从 Railway 平台注入。上方设置将存入数据库并覆盖默认值。
             </p>
           </div>
         </CardContent>

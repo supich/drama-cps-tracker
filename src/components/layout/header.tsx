@@ -30,7 +30,7 @@ export function Header() {
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder="搜索..."
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -57,18 +57,18 @@ export function Header() {
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">Admin</p>
+                <p className="text-sm font-medium">管理员</p>
                 <p className="text-xs text-muted-foreground">admin@example.com</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>个人资料</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>退出登录</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

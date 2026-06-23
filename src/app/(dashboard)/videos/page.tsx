@@ -60,8 +60,8 @@ export default function VideosPage() {
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch videos',
+        title: '错误',
+        description: '获取视频列表失败',
         variant: 'destructive',
       })
     } finally {
@@ -88,14 +88,14 @@ export default function VideosPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Videos</h1>
+          <h1 className="text-3xl font-bold">视频管理</h1>
           <p className="text-muted-foreground">
-            Manage your video assets
+            管理您的视频素材
           </p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Upload Video
+          上传视频
         </Button>
       </div>
 
@@ -104,7 +104,7 @@ export default function VideosPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search videos..."
+            placeholder="搜索视频..."
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -115,11 +115,11 @@ export default function VideosPage() {
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="READY">Ready</SelectItem>
-            <SelectItem value="ARCHIVED">Archived</SelectItem>
-            <SelectItem value="BANNED">Banned</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="DRAFT">草稿</SelectItem>
+            <SelectItem value="READY">已就绪</SelectItem>
+            <SelectItem value="ARCHIVED">已归档</SelectItem>
+            <SelectItem value="BANNED">已封禁</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -127,15 +127,15 @@ export default function VideosPage() {
       {/* Videos List */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading videos...</div>
+          <div className="text-muted-foreground">正在加载视频...</div>
         </div>
       ) : filteredVideos.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Video className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No videos found</h3>
+            <h3 className="text-lg font-semibold">未找到视频</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery ? 'Try a different search term' : 'Upload your first video to get started'}
+              {searchQuery ? '请尝试其他搜索内容' : '上传您的第一个视频开始使用'}
             </p>
           </CardContent>
         </Card>
@@ -174,7 +174,7 @@ export default function VideosPage() {
               
               <CardContent className="space-y-3">
                 <div className="text-sm text-muted-foreground">
-                  Drama: {video.drama.dramaName}
+                  剧集：{video.drama.dramaName}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
@@ -186,11 +186,11 @@ export default function VideosPage() {
                 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Variants</p>
+                    <p className="text-muted-foreground">剪辑版本</p>
                     <p className="font-medium">{video._count.variants}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Tasks</p>
+                    <p className="text-muted-foreground">发布任务</p>
                     <p className="font-medium">{video._count.publishTasks}</p>
                   </div>
                 </div>
@@ -201,7 +201,7 @@ export default function VideosPage() {
                 </div>
                 
                 <Button variant="outline" size="sm" className="w-full">
-                  View Details
+                  查看详情
                 </Button>
               </CardContent>
             </Card>

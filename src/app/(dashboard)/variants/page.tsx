@@ -85,14 +85,14 @@ export default function VariantsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Video Variants</h1>
+          <h1 className="text-3xl font-bold">剪辑版本管理</h1>
           <p className="text-muted-foreground">
-            Manage different versions of your videos
+            管理视频的不同剪辑版本
           </p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Create Variant
+          创建版本
         </Button>
       </div>
 
@@ -101,7 +101,7 @@ export default function VariantsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search variants..."
+            placeholder="搜索剪辑版本..."
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -112,11 +112,11 @@ export default function VariantsPage() {
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="READY">Ready</SelectItem>
-            <SelectItem value="PUBLISHED">Published</SelectItem>
-            <SelectItem value="ARCHIVED">Archived</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="DRAFT">草稿</SelectItem>
+            <SelectItem value="READY">已就绪</SelectItem>
+            <SelectItem value="PUBLISHED">已发布</SelectItem>
+            <SelectItem value="ARCHIVED">已归档</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -124,15 +124,15 @@ export default function VariantsPage() {
       {/* Variants List */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading variants...</div>
+          <div className="text-muted-foreground">正在加载剪辑版本...</div>
         </div>
       ) : filteredVariants.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Layers className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No variants found</h3>
+            <h3 className="text-lg font-semibold">未找到剪辑版本</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery ? 'Try a different search term' : 'Create your first variant to get started'}
+              {searchQuery ? '请尝试其他搜索内容' : '创建您的第一个剪辑版本开始使用'}
             </p>
           </CardContent>
         </Card>
@@ -205,11 +205,11 @@ export default function VariantsPage() {
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Tasks</p>
+                    <p className="text-muted-foreground">发布任务</p>
                     <p className="font-medium">{variant._count.publishTasks}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Drama</p>
+                    <p className="text-muted-foreground">剧集</p>
                     <p className="font-medium text-xs line-clamp-1">
                       {variant.video.drama.dramaName}
                     </p>
@@ -222,7 +222,7 @@ export default function VariantsPage() {
                 </div>
 
                 <Button variant="outline" size="sm" className="w-full">
-                  View Details
+                  查看详情
                 </Button>
               </CardContent>
             </Card>

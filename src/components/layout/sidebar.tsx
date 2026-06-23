@@ -17,47 +17,47 @@ import {
 
 const menuItems = [
   {
-    title: 'Dashboard',
+    title: '数据看板',
     href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: 'Facebook Pages',
+    title: 'Facebook 主页',
     href: '/pages',
     icon: Facebook,
   },
   {
-    title: 'Videos',
+    title: '视频管理',
     href: '/videos',
     icon: Video,
   },
   {
-    title: 'Variants',
+    title: '剪辑版本',
     href: '/variants',
     icon: Layers,
   },
   {
-    title: 'Scheduler',
+    title: '发布计划',
     href: '/scheduler',
     icon: Calendar,
   },
   {
-    title: 'Publish Tasks',
+    title: '发布任务',
     href: '/tasks',
     icon: ListTodo,
   },
   {
-    title: 'Analytics',
+    title: '数据分析',
     href: '/analytics',
     icon: BarChart3,
   },
   {
-    title: 'Click Logs',
+    title: '点击日志',
     href: '/clicks',
     icon: MousePointerClick,
   },
   {
-    title: 'Settings',
+    title: '系统设置',
     href: '/settings',
     icon: Settings,
   },

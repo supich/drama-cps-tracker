@@ -73,8 +73,8 @@ export default function ClicksPage() {
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch click logs',
+        title: '错误',
+        description: '获取点击日志失败',
         variant: 'destructive',
       })
     } finally {
@@ -95,7 +95,7 @@ export default function ClicksPage() {
 
   const handleExport = () => {
     const csvContent = [
-      ['ID', 'Page', 'Video', 'Variant', 'IP', 'User Agent', 'Referer', 'Target URL', 'Click Time'],
+      ['ID', '主页', '视频', '剪辑版本', 'IP', '浏览器', '来源', '目标链接', '点击时间'],
       ...filteredClicks.map(click => [
         click.id,
         click.page?.pageName || '',
@@ -119,7 +119,7 @@ export default function ClicksPage() {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
     
-    toast({ title: 'Success', description: 'Export started' })
+    toast({ title: '导出成功', description: '文件已开始下载' })
   }
 
   return (
@@ -127,15 +127,15 @@ export default function ClicksPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Click Logs</h1>
+          <h1 className="text-3xl font-bold">点击日志</h1>
           <p className="text-muted-foreground">
-            Track clicks on your CPS links ({formatNumber(totalClicks)} total)
+            追踪 CPS 链接点击数据（共 {formatNumber(totalClicks)} 条）
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            导出 CSV
           </Button>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function ClicksPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search clicks..."
+            placeholder="搜索点击记录..."
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -156,10 +156,10 @@ export default function ClicksPage() {
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">Last 24 hours</SelectItem>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="14">Last 14 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="1">过去 24 小时</SelectItem>
+            <SelectItem value="7">过去 7 天</SelectItem>
+            <SelectItem value="14">过去 14 天</SelectItem>
+            <SelectItem value="30">过去 30 天</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -168,13 +168,13 @@ export default function ClicksPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
+            <CardTitle className="text-sm font-medium">点击总数</CardTitle>
             <MousePointerClick className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(totalClicks)}</div>
             <p className="text-xs text-muted-foreground">
-              Last {dateRange} days
+              过去 {dateRange} 天
             </p>
           </CardContent>
         </Card>
@@ -183,15 +183,15 @@ export default function ClicksPage() {
       {/* Clicks Table */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading click logs...</div>
+          <div className="text-muted-foreground">正在加载点击日志...</div>
         </div>
       ) : filteredClicks.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MousePointerClick className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No clicks found</h3>
+            <h3 className="text-lg font-semibold">未找到点击记录</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery ? 'Try a different search term' : 'No click data available for the selected time range'}
+              {searchQuery ? '请尝试其他搜索内容' : '所选时间范围内暂无点击数据'}
             </p>
           </CardContent>
         </Card>
@@ -203,12 +203,12 @@ export default function ClicksPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">ID</TableHead>
-                    <TableHead>Page</TableHead>
-                    <TableHead>Video</TableHead>
-                    <TableHead>Variant</TableHead>
+                    <TableHead>主页</TableHead>
+                    <TableHead>视频</TableHead>
+                    <TableHead>剪辑版本</TableHead>
                     <TableHead className="w-[120px]">IP</TableHead>
-                    <TableHead className="w-[180px]">Time</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[180px]">时间</TableHead>
+                    <TableHead className="w-[100px]">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,7 +232,7 @@ export default function ClicksPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {click.ip || 'Unknown'}
+                          {click.ip || '未知'}
                         </div>
                         <div className="text-xs text-muted-foreground line-clamp-1 max-w-[120px]">
                           {click.userAgent?.split(' ')[0] || ''}
@@ -249,7 +249,7 @@ export default function ClicksPage() {
                           size="sm"
                           onClick={() => {
                             navigator.clipboard.writeText(click.targetUrl)
-                            toast({ title: 'Copied', description: 'URL copied to clipboard' })
+                            toast({ title: '已复制', description: 'URL 已复制到剪贴板' })
                           }}
                         >
                           <ExternalLink className="h-4 w-4" />

@@ -67,8 +67,8 @@ export default function PagesPage() {
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch pages',
+        title: '错误',
+        description: '获取主页列表失败',
         variant: 'destructive',
       })
     } finally {
@@ -89,13 +89,13 @@ export default function PagesPage() {
       const result = await response.json()
       
       if (result.success) {
-        toast({ title: 'Success', description: 'Page paused successfully' })
+        toast({ title: '成功', description: '主页已暂停' })
         fetchPages()
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to pause page',
+        title: '错误',
+        description: '暂停主页失败',
         variant: 'destructive',
       })
     }
@@ -107,13 +107,13 @@ export default function PagesPage() {
       const result = await response.json()
       
       if (result.success) {
-        toast({ title: 'Success', description: 'Page resumed successfully' })
+        toast({ title: '成功', description: '主页已恢复运行' })
         fetchPages()
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to resume page',
+        title: '错误',
+        description: '恢复主页失败',
         variant: 'destructive',
       })
     }
@@ -124,14 +124,14 @@ export default function PagesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Facebook Pages</h1>
+          <h1 className="text-3xl font-bold">Facebook 主页管理</h1>
           <p className="text-muted-foreground">
-            Manage your Facebook pages for publishing
+            管理用于发布的 Facebook 主页
           </p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Page
+          添加主页
         </Button>
       </div>
       
@@ -140,7 +140,7 @@ export default function PagesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search pages..."
+            placeholder="搜索主页..."
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -151,11 +151,11 @@ export default function PagesPage() {
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="PAUSED">Paused</SelectItem>
-            <SelectItem value="WARNING">Warning</SelectItem>
-            <SelectItem value="RESTRICTED">Restricted</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="ACTIVE">正常</SelectItem>
+            <SelectItem value="PAUSED">已暂停</SelectItem>
+            <SelectItem value="WARNING">预警</SelectItem>
+            <SelectItem value="RESTRICTED">受限</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="icon" onClick={fetchPages}>
@@ -166,15 +166,15 @@ export default function PagesPage() {
       {/* Pages List */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading pages...</div>
+          <div className="text-muted-foreground">正在加载主页...</div>
         </div>
       ) : filteredPages.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Facebook className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No pages found</h3>
+            <h3 className="text-lg font-semibold">未找到主页</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery ? 'Try a different search term' : 'Add your first Facebook page to get started'}
+              {searchQuery ? '请尝试其他搜索内容' : '添加您的第一个 Facebook 主页开始使用'}
             </p>
             {!searchQuery && (
               <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -203,23 +203,23 @@ export default function PagesPage() {
                 {/* Page Stats */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Fans</p>
+                    <p className="text-muted-foreground">粉丝数</p>
                     <p className="font-medium">{formatNumber(page.fansCount)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Health</p>
+                    <p className="text-muted-foreground">健康度</p>
                     <p className={`font-medium ${getHealthScoreColor(page.healthScore)}`}>
                       {page.healthScore}%
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Today</p>
+                    <p className="text-muted-foreground">今日发布</p>
                     <p className="font-medium">
                       {page.todayPostCount}/{page.dailyPostLimit}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Language</p>
+                    <p className="text-muted-foreground">语言</p>
                     <p className="font-medium">{page.language}</p>
                   </div>
                 </div>
@@ -241,7 +241,7 @@ export default function PagesPage() {
                       className="flex-1"
                       onClick={() => handlePausePage(page.id)}
                     >
-                      Pause
+                      暂停
                     </Button>
                   ) : page.status === 'PAUSED' ? (
                     <Button
@@ -250,11 +250,11 @@ export default function PagesPage() {
                       className="flex-1"
                       onClick={() => handleResumePage(page.id)}
                     >
-                      Resume
+                      恢复
                     </Button>
                   ) : null}
                   <Button variant="ghost" size="sm">
-                    Details
+                    详情
                   </Button>
                 </div>
               </CardContent>
@@ -307,7 +307,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
       const result = await response.json()
       
       if (result.success) {
-        toast({ title: 'Success', description: 'Page added successfully' })
+        toast({ title: '成功', description: '主页添加成功' })
         onOpenChange(false)
         onSuccess()
         setFormData({
@@ -322,15 +322,15 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
         })
       } else {
         toast({
-          title: 'Error',
-          description: result.error?.message || 'Failed to add page',
+          title: '错误',
+          description: result.error?.message || '添加主页失败',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to add page',
+        title: '错误',
+        description: '添加主页失败',
         variant: 'destructive',
       })
     } finally {
@@ -342,14 +342,14 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Facebook Page</DialogTitle>
+          <DialogTitle>添加 Facebook 主页</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="pageId">Page ID</Label>
+            <Label htmlFor="pageId">主页 ID</Label>
             <Input
               id="pageId"
-              placeholder="Enter Facebook Page ID"
+              placeholder="输入 Facebook 主页 ID"
               value={formData.pageId}
               onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
               required
@@ -357,10 +357,10 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="pageName">Page Name</Label>
+            <Label htmlFor="pageName">主页名称</Label>
             <Input
               id="pageName"
-              placeholder="Enter page name"
+              placeholder="输入主页名称"
               value={formData.pageName}
               onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
               required
@@ -368,11 +368,11 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="accessToken">Access Token</Label>
+            <Label htmlFor="accessToken">访问令牌</Label>
             <Input
               id="accessToken"
               type="password"
-              placeholder="Enter page access token"
+              placeholder="输入主页访问令牌"
               value={formData.accessToken}
               onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
               required
@@ -381,20 +381,20 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="niche">Niche</Label>
+              <Label htmlFor="niche">内容类型</Label>
               <Input
                 id="niche"
-                placeholder="e.g., Romance"
+                placeholder="如：婿情"
                 value={formData.niche}
                 onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="region">Region</Label>
+              <Label htmlFor="region">地区</Label>
               <Input
                 id="region"
-                placeholder="e.g., US"
+                placeholder="如：CN"
                 value={formData.region}
                 onChange={(e) => setFormData({ ...formData, region: e.target.value })}
               />
@@ -403,7 +403,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="language">Language</Label>
+              <Label htmlFor="language">语言</Label>
               <Input
                 id="language"
                 placeholder="en"
@@ -413,7 +413,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="dailyPostLimit">Daily Limit</Label>
+              <Label htmlFor="dailyPostLimit">每日上限</Label>
               <Input
                 id="dailyPostLimit"
                 type="number"
@@ -426,7 +426,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           </div>
           
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Adding...' : 'Add Page'}
+            {loading ? '正在添加...' : '添加主页'}
           </Button>
         </form>
       </DialogContent>
