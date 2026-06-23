@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,11 +26,28 @@ const defaultSettings: SystemSetting[] = [
   { key: 'HEALTH_CHECK_INTERVAL', value: '60', description: '健康检查间隔（分钟）' },
 ]
 
+interface EnvInfo {
+  NODE_ENV: string
+  META_APP_ID: string
+  DATABASE_URL: string
+  REDIS_URL: string
+  STORAGE_TYPE: string
+  UPLOAD_DIR: string
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSetting[]>(defaultSettings)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [envInfo, setEnvInfo] = useState<EnvInfo | null>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    fetch('/api/system/env')
+      .then(r => r.json())
+      .then(result => { if (result.success) setEnvInfo(result.data) })
+      .catch(() => {})
+  }, [])
 
   const handleSettingChange = (key: string, value: string) => {
     setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s))
@@ -207,30 +224,16 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-medium">NODE_ENV</p>
-              <p className="text-muted-foreground">development</p>
-            </div>
-            <div>
-              <p className="font-medium">META_APP_ID</p>
-              <p className="text-muted-foreground">configured</p>
-            </div>
-            <div>
-              <p className="font-medium">DATABASE_URL</p>
-              <p className="text-muted-foreground">postgresql://...</p>
-            </div>
-            <div>
-              <p className="font-medium">REDIS_URL</p>
-              <p className="text-muted-foreground">redis://localhost:6379</p>
-            </div>
-            <div>
-              <p className="font-medium">STORAGE_TYPE</p>
-              <p className="text-muted-foreground">local</p>
-            </div>
-            <div>
-              <p className="font-medium">UPLOAD_DIR</p>
-              <p className="text-muted-foreground">./uploads</p>
-            </div>
+            {envInfo ? (
+              Object.entries(envInfo).map(([key, value]) => (
+                <div key={key}>
+                  <p className="font-medium">{key}</p>
+                  <p className="text-muted-foreground font-mono text-xs">{value}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground col-span-2">加载中...</p>
+            )}
           </div>
           <div className="mt-4 p-4 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">

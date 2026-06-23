@@ -68,12 +68,12 @@ export const createBatchPublishSchema = z.object({
 
 // 查询参数验证
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  search: z.string().optional(),
-  status: z.string().optional(),
-  sortBy: z.string().optional(),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  page: z.coerce.number().int().gt(0).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).catch(20),
+  search: z.string().nullish().transform(v => v ?? undefined),
+  status: z.string().nullish().transform(v => v ?? undefined),
+  sortBy: z.string().nullish().transform(v => v ?? undefined),
+  sortOrder: z.enum(['asc', 'desc']).catch('desc'),
 })
 
 // Analytics 查询验证

@@ -93,7 +93,7 @@ export default function SchedulerPage() {
       const [variantsRes, pagesRes, tasksRes] = await Promise.all([
         fetch('/api/variants?limit=100'),
         fetch('/api/pages?limit=100'),
-        fetch('/api/publish-tasks?limit=200'),
+        fetch('/api/publish-tasks?limit=100'),
       ])
 
       const [variantsResult, pagesResult, tasksResult] = await Promise.all([
