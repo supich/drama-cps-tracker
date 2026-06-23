@@ -15,8 +15,8 @@ export async function GET(_request: NextRequest) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
     ])
     services.database = 'healthy'
-  } catch {
-    services.database = 'unhealthy'
+  } catch (err: any) {
+    services.database = `unhealthy: ${String(err?.message || err).slice(0, 120)}`
   }
 
   // 检查 Redis 连接（加超时避免长时间挂起）
@@ -26,8 +26,8 @@ export async function GET(_request: NextRequest) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
     ])
     services.redis = 'healthy'
-  } catch {
-    services.redis = 'unhealthy'
+  } catch (err: any) {
+    services.redis = `unhealthy: ${String(err?.message || err).slice(0, 120)}`
   }
 
   const allHealthy = Object.values(services).every((s) => s === 'healthy')
