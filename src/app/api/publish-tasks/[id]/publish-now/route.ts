@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { publishTaskService } from '@/services/database/publish-tasks'
-import { addPublishJob, removePublishJob } from '@/services/queue'
+import { removePublishJob } from '@/services/queue'
+import { executePublishTask } from '@/services/publisher'
 import { handleApiError, successResponse } from '@/lib/errors'
 
 // PATCH /api/publish-tasks/:id/publish-now - 将待发布任务立即加入发布队列
@@ -13,16 +14,11 @@ export async function PATCH(
   try {
     await removePublishJob(params.id)
     const task = await publishTaskService.publishTaskNow(params.id)
-
-    await addPublishJob({
-      taskId: task.id,
-      pageId: task.pageId,
-      videoId: task.videoId,
-      variantId: task.variantId,
-      scheduledAt: task.scheduledAt,
+    const result = await executePublishTask(task.id, {
+      origin: new URL(_request.url).origin,
     })
 
-    return NextResponse.json(successResponse(task))
+    return NextResponse.json(successResponse({ task, result }))
   } catch (error) {
     const errorResponse = handleApiError(error)
     return NextResponse.json(errorResponse, { status: errorResponse.statusCode })

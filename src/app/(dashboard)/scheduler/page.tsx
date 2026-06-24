@@ -216,6 +216,23 @@ export default function SchedulerPage() {
           return
         }
 
+        if (publishMode === 'NOW') {
+          const failed = result.data.publishErrors?.length || 0
+          toast({
+            title: failed > 0 ? '部分发布失败' : '发布成功',
+            description: failed > 0
+              ? `已创建 ${result.data.created} 个任务，成功发布 ${result.data.published || 0} 个，失败 ${failed} 个：${result.data.publishErrors.join('；')}`
+              : `已成功发布 ${result.data.published || result.data.created} 个任务`,
+            variant: failed > 0 ? 'destructive' : undefined,
+          })
+          setIsDialogOpen(false)
+          fetchData()
+          setSelectedVariants([])
+          setSelectedVideos([])
+          setSelectedPages([])
+          return
+        }
+
         const firstTaskTime = result.data.tasks?.[0]?.scheduledAt
         toast({
           title: '成功',

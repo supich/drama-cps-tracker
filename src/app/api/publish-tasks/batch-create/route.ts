@@ -5,6 +5,7 @@ import { publishTaskService } from '@/services/database/publish-tasks'
 import { createBatchPublishSchema } from '@/lib/validations'
 import { handleApiError, successResponse } from '@/lib/errors'
 import { addBatchPublishJobs } from '@/services/queue'
+import { executePublishTask } from '@/services/publisher'
 
 // POST /api/publish-tasks/batch-create - 批量创建发布任务
 export async function POST(request: NextRequest) {
@@ -27,7 +28,29 @@ export async function POST(request: NextRequest) {
       publishHoursEnd: validatedData.publishHoursEnd,
     })
     
-    // 如果成功创建了任务，将它们添加到队列
+    if (result.created > 0 && validatedData.publishMode === 'NOW') {
+      const publishErrors: string[] = []
+      let published = 0
+
+      for (const task of result.tasks) {
+        try {
+          await executePublishTask(task.id, {
+            origin: new URL(request.url).origin,
+          })
+          published++
+        } catch (error: any) {
+          publishErrors.push(error?.message || `Task ${task.id} failed`)
+        }
+      }
+
+      return NextResponse.json(successResponse({
+        ...result,
+        published,
+        publishErrors,
+      }))
+    }
+
+    // 如果成功创建了预约/排期任务，将它们添加到队列
     if (result.created > 0) {
       // 添加到队列
       const queueJobs = result.tasks.map(task => ({
