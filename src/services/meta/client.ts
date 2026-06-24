@@ -24,13 +24,49 @@ export class MetaClient {
     })
   }
 
+  private async debugTokenWithCredentials(
+    inputToken: string,
+    credentials: { appId: string; appSecret: string }
+  ): Promise<MetaTokenInfo> {
+    const response: AxiosResponse<MetaAPIResponse<MetaTokenInfo>> = await this.client.get(
+      '/debug_token',
+      {
+        params: {
+          input_token: inputToken,
+          access_token: `${credentials.appId}|${credentials.appSecret}`,
+        },
+      }
+    )
+
+    if (response.data.error) {
+      throw new MetaAPIError(response.data.error.message, response.data.error)
+    }
+
+    if (!response.data.data) {
+      throw new MetaAPIError('No token data returned')
+    }
+
+    return response.data.data
+  }
+
   // 将短期 User Access Token 交换为长期 User Access Token
   async exchangeUserAccessToken(userAccessToken: string): Promise<MetaLongLivedTokenResponse> {
     try {
       const credentials = await settingsService.getMetaAppCredentials()
+      const inputToken = userAccessToken.trim()
 
       if (!credentials.appId || !credentials.appSecret) {
         throw new MetaAPIError('缺少 META_APP_ID 或 META_APP_SECRET，无法转换长期用户口令')
+      }
+
+      const tokenInfo = await this.debugTokenWithCredentials(inputToken, credentials)
+      if (!tokenInfo.is_valid) {
+        throw new MetaAPIError('当前用户口令无效或已过期，请重新生成短期用户口令后再转换')
+      }
+      if (tokenInfo.app_id && tokenInfo.app_id !== credentials.appId) {
+        throw new MetaAPIError(
+          `当前用户口令属于 Meta App ${tokenInfo.app_id}，但系统设置里的 Meta App ID 是 ${credentials.appId}。请在 Graph API Explorer 顶部选择同一个 Meta App 后重新生成用户口令，再点击转长期口令。`
+        )
       }
 
       const response: AxiosResponse<MetaLongLivedTokenResponse | MetaAPIResponse<MetaLongLivedTokenResponse>> =
@@ -39,7 +75,7 @@ export class MetaClient {
             grant_type: 'fb_exchange_token',
             client_id: credentials.appId,
             client_secret: credentials.appSecret,
-            fb_exchange_token: userAccessToken,
+            fb_exchange_token: inputToken,
           },
         })
 
@@ -60,11 +96,26 @@ export class MetaClient {
 
       return tokenData
     } catch (error: any) {
-      if (error instanceof MetaAPIError) throw error
+      if (error instanceof MetaAPIError) {
+        const mismatchHint = /unexpected error|retry your request later/i.test(error.message || '')
+          ? '请确认：1）系统设置里的 Meta App ID/App Secret 属于同一个应用；2）Graph API Explorer 生成用户口令时选择的是同一个应用；3）保存设置后重新生成了一次短期用户口令。'
+          : null
+        if (mismatchHint) {
+          throw new MetaAPIError(
+            `转换长期用户口令失败：${error.message} ${mismatchHint}`,
+            error.metaError,
+            error.statusCode
+          )
+        }
+        throw error
+      }
       const metaError = error.response?.data?.error
       if (metaError) {
+        const mismatchHint = /unexpected error|retry your request later/i.test(metaError.message || '')
+          ? '请确认：1）系统设置里的 Meta App ID/App Secret 属于同一个应用；2）Graph API Explorer 生成用户口令时选择的是同一个应用；3）保存设置后重新生成了一次短期用户口令。'
+          : null
         throw new MetaAPIError(
-          `转换长期用户口令失败：${metaError.message}`,
+          `转换长期用户口令失败：${[metaError.message, mismatchHint].filter(Boolean).join(' ')}`,
           metaError,
           error.response?.status || 400
         )

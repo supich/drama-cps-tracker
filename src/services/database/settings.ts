@@ -92,8 +92,8 @@ export class SettingsService {
     const values = new Map(settings.map(setting => [setting.key, setting.value]))
 
     return {
-      appId: values.get('META_APP_ID') || process.env.META_APP_ID || '',
-      appSecret: values.get('META_APP_SECRET') || process.env.META_APP_SECRET || '',
+      appId: (values.get('META_APP_ID') || process.env.META_APP_ID || '').trim(),
+      appSecret: (values.get('META_APP_SECRET') || process.env.META_APP_SECRET || '').trim(),
     }
   }
 }
