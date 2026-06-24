@@ -99,14 +99,19 @@ export class MetaClient {
     description: string
   ): Promise<MetaPublishVideoResponse> {
     try {
+      const form = new URLSearchParams()
+      form.set('access_token', accessToken)
+      form.set('file_url', videoUrl)
+      form.set('title', title)
+      form.set('description', description)
+      form.set('published', 'true')
+
       const response: AxiosResponse<
         MetaAPIResponse<MetaPublishVideoResponse> | MetaPublishVideoResponse
-      > = await this.client.post(`/${pageId}/videos`, {
-        access_token: accessToken,
-        file_url: videoUrl,
-        title,
-        description,
-        published: true,
+      > = await this.client.post(`/${pageId}/videos`, form, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       })
 
       const responseData = response.data
@@ -133,9 +138,27 @@ export class MetaClient {
       }
     } catch (error: any) {
       if (error instanceof MetaAPIError) throw error
+      const metaError = error.response?.data?.error
+      if (metaError) {
+        const details = [
+          metaError.message,
+          metaError.type ? `type: ${metaError.type}` : null,
+          metaError.code ? `code: ${metaError.code}` : null,
+          metaError.error_subcode ? `subcode: ${metaError.error_subcode}` : null,
+          metaError.fbtrace_id ? `trace: ${metaError.fbtrace_id}` : null,
+        ].filter(Boolean).join(' | ')
+
+        throw new MetaAPIError(
+          `Facebook 发布失败：${details}`,
+          metaError,
+          error.response?.status || 400
+        )
+      }
+
       throw new MetaAPIError(
         `Failed to publish video: ${error.message}`,
-        error.response?.data?.error
+        error.response?.data,
+        error.response?.status || 400
       )
     }
   }
