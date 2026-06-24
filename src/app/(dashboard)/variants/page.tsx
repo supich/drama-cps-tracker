@@ -461,6 +461,10 @@ export default function VariantsPage() {
         onOpenChange={(open) => {
           if (!open) setSelectedVariant(null)
         }}
+        onSaved={() => {
+          setSelectedVariant(null)
+          fetchVariants()
+        }}
       />
     </div>
   )
@@ -470,26 +474,95 @@ function VariantDetailDialog({
   variant,
   open,
   onOpenChange,
+  onSaved,
 }: {
   variant: VariantData | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSaved: () => void
 }) {
+  const [editForm, setEditForm] = useState({
+    variantName: '',
+    title: '',
+    caption: '',
+    coverUrl: '',
+    hookType: '',
+    ctaType: '',
+    hashtags: '',
+    status: 'READY',
+  })
+  const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!variant) return
+    setEditForm({
+      variantName: variant.variantName,
+      title: variant.title,
+      caption: variant.caption || '',
+      coverUrl: variant.coverUrl || '',
+      hookType: variant.hookType || '',
+      ctaType: variant.ctaType || '',
+      hashtags: variant.hashtags.join(', '),
+      status: variant.status,
+    })
+  }, [variant])
+
   if (!variant) return null
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editForm.variantName.trim() || !editForm.title.trim()) {
+      toast({ title: '错误', description: '请填写版本名称和发布标题', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setSaving(true)
+      const body: Record<string, unknown> = {
+        variantName: editForm.variantName.trim(),
+        title: editForm.title.trim(),
+        caption: editForm.caption.trim(),
+        coverUrl: editForm.coverUrl.trim(),
+        hookType: editForm.hookType.trim(),
+        ctaType: editForm.ctaType.trim(),
+        status: editForm.status,
+        hashtags: editForm.hashtags.split(',').map(tag => tag.trim().replace(/^#/, '')).filter(Boolean),
+      }
+
+      const response = await fetch(`/api/variants/${variant.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({ title: '成功', description: '剪辑版本已更新' })
+        onSaved()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '保存失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '保存剪辑版本失败', variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{variant.variantName}</DialogTitle>
+          <DialogTitle>剪辑版本详情</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <form onSubmit={handleSave} className="space-y-5">
           <div className="aspect-video overflow-hidden rounded-md bg-muted">
-            {variant.coverUrl ? (
+            {editForm.coverUrl ? (
               <img
-                src={variant.coverUrl}
-                alt={variant.variantName}
+                src={editForm.coverUrl}
+                alt={editForm.variantName}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -505,7 +578,80 @@ function VariantDetailDialog({
             <Badge variant="secondary">{variant.video.drama.dramaName}</Badge>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>版本名称 <span className="text-red-500">*</span></Label>
+              <Input
+                value={editForm.variantName}
+                onChange={e => setEditForm(f => ({ ...f, variantName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>状态</Label>
+              <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="READY">已就绪</SelectItem>
+                  <SelectItem value="DRAFT">草稿</SelectItem>
+                  <SelectItem value="PUBLISHED">已发布</SelectItem>
+                  <SelectItem value="ARCHIVED">已归档</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>发布标题 <span className="text-red-500">*</span></Label>
+            <Input
+              value={editForm.title}
+              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>发布文案</Label>
+            <Input
+              value={editForm.caption}
+              onChange={e => setEditForm(f => ({ ...f, caption: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>封面图链接</Label>
+            <Input
+              value={editForm.coverUrl}
+              onChange={e => setEditForm(f => ({ ...f, coverUrl: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Hook 类型</Label>
+              <Input
+                value={editForm.hookType}
+                onChange={e => setEditForm(f => ({ ...f, hookType: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>CTA 类型</Label>
+              <Input
+                value={editForm.ctaType}
+                onChange={e => setEditForm(f => ({ ...f, ctaType: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>话题标签（逗号分隔）</Label>
+            <Input
+              value={editForm.hashtags}
+              onChange={e => setEditForm(f => ({ ...f, hashtags: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">发布任务</p>
               <p className="font-medium">{formatNumber(variant._count.publishTasks)}</p>
@@ -520,56 +666,15 @@ function VariantDetailDialog({
             </div>
             <div>
               <p className="text-sm text-muted-foreground">视频 ID</p>
-              <p className="font-mono text-xs">{variant.video.id}</p>
+              <p className="font-mono text-xs truncate">{variant.video.id}</p>
             </div>
           </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">发布标题</p>
-            <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
-              {variant.title}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">发布文案</p>
-            <div className="min-h-16 rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
-              {variant.caption || '未填写'}
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Hook 类型</p>
-              <p className="text-sm text-muted-foreground">{variant.hookType || '未填写'}</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">CTA 类型</p>
-              <p className="text-sm text-muted-foreground">{variant.ctaType || '未填写'}</p>
-            </div>
-          </div>
-
-          {variant.hashtags.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">话题标签</p>
-              <div className="flex flex-wrap gap-2">
-                {variant.hashtags.map((tag) => (
-                  <Badge key={tag} variant="outline">#{tag}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
-            <Button asChild>
-              <Link href={`/scheduler?variantId=${variant.id}`}>
-                <CalendarPlus className="mr-2 h-4 w-4" />
-                发布
-              </Link>
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
+            <Button type="submit" disabled={saving}>{saving ? '保存中...' : '保存修改'}</Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

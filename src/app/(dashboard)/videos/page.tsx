@@ -57,6 +57,7 @@ export default function VideosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [dramas, setDramas] = useState<Drama[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
@@ -107,6 +108,11 @@ export default function VideosPage() {
     fetchDramas()
     setForm({ dramaId: '', title: '', description: '', fileUrl: '', coverUrl: '', duration: '', language: 'zh', tags: '' })
     setIsUploadOpen(true)
+  }
+
+  const handleOpenDetails = (video: VideoData) => {
+    fetchDramas()
+    setSelectedVideo(video)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -379,7 +385,7 @@ export default function VideosPage() {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenDetails(video)}>
                     查看详情
                   </Button>
                   <Button size="sm" asChild>
@@ -394,6 +400,228 @@ export default function VideosPage() {
           ))}
         </div>
       )}
+
+      <VideoDetailDialog
+        video={selectedVideo}
+        dramas={dramas}
+        open={!!selectedVideo}
+        onOpenChange={(open) => {
+          if (!open) setSelectedVideo(null)
+        }}
+        onSaved={() => {
+          setSelectedVideo(null)
+          fetchVideos()
+        }}
+      />
     </div>
+  )
+}
+
+function VideoDetailDialog({
+  video,
+  dramas,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  video: VideoData | null
+  dramas: Drama[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSaved: () => void
+}) {
+  const [editForm, setEditForm] = useState({
+    dramaId: '',
+    title: '',
+    description: '',
+    fileUrl: '',
+    coverUrl: '',
+    duration: '',
+    language: 'zh',
+    tags: '',
+    status: 'READY',
+  })
+  const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!video) return
+    setEditForm({
+      dramaId: video.drama.id,
+      title: video.title,
+      description: video.description || '',
+      fileUrl: video.fileUrl,
+      coverUrl: video.coverUrl || '',
+      duration: video.duration ? String(video.duration) : '',
+      language: video.language || 'zh',
+      tags: video.tags.join(', '),
+      status: video.status,
+    })
+  }, [video])
+
+  if (!video) return null
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editForm.dramaId || !editForm.title.trim() || !editForm.fileUrl.trim()) {
+      toast({ title: '错误', description: '请填写剧集、标题和视频链接', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setSaving(true)
+      const body: Record<string, unknown> = {
+        dramaId: editForm.dramaId,
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
+        fileUrl: editForm.fileUrl.trim(),
+        coverUrl: editForm.coverUrl.trim(),
+        language: editForm.language,
+        status: editForm.status,
+        tags: editForm.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      }
+      if (editForm.duration.trim()) body.duration = parseInt(editForm.duration, 10)
+
+      const response = await fetch(`/api/videos/${video.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({ title: '成功', description: '视频已更新' })
+        onSaved()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '保存失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '保存视频失败', variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>视频详情</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSave} className="space-y-4 mt-2">
+          <div className="aspect-video overflow-hidden rounded-md bg-muted">
+            {editForm.coverUrl ? (
+              <img src={editForm.coverUrl} alt={editForm.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <Play className="h-12 w-12 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>所属剧集 <span className="text-red-500">*</span></Label>
+              <Select value={editForm.dramaId} onValueChange={v => setEditForm(f => ({ ...f, dramaId: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dramas.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.dramaName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>状态</Label>
+              <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRAFT">草稿</SelectItem>
+                  <SelectItem value="READY">已就绪</SelectItem>
+                  <SelectItem value="ARCHIVED">已归档</SelectItem>
+                  <SelectItem value="BANNED">已封禁</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>视频标题 <span className="text-red-500">*</span></Label>
+            <Input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
+          </div>
+
+          <div className="space-y-1">
+            <Label>视频链接 <span className="text-red-500">*</span></Label>
+            <Input value={editForm.fileUrl} onChange={e => setEditForm(f => ({ ...f, fileUrl: e.target.value }))} />
+          </div>
+
+          <div className="space-y-1">
+            <Label>封面图链接</Label>
+            <Input value={editForm.coverUrl} onChange={e => setEditForm(f => ({ ...f, coverUrl: e.target.value }))} />
+          </div>
+
+          <div className="space-y-1">
+            <Label>描述</Label>
+            <Input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>时长（秒）</Label>
+              <Input
+                type="number"
+                min={1}
+                value={editForm.duration}
+                onChange={e => setEditForm(f => ({ ...f, duration: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>语言</Label>
+              <Select value={editForm.language} onValueChange={v => setEditForm(f => ({ ...f, language: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zh">中文</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="pt">Português</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>标签（逗号分隔）</Label>
+            <Input value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))} />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <p className="text-sm text-muted-foreground">剪辑版本</p>
+              <p className="font-medium">{formatNumber(video._count.variants)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">发布任务</p>
+              <p className="font-medium">{formatNumber(video._count.publishTasks)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">创建时间</p>
+              <p className="font-medium">{formatDate(video.createdAt)}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button type="submit" disabled={saving}>{saving ? '保存中...' : '保存修改'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

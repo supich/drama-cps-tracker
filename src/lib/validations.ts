@@ -38,6 +38,7 @@ export const createVideoSchema = z.object({
   duration: z.number().int().positive().optional(),
   language: z.string().default('en'),
   tags: z.array(z.string()).optional(),
+  status: z.enum(['DRAFT', 'READY', 'ARCHIVED', 'BANNED']).default('DRAFT'),
 })
 
 export const updateVideoSchema = createVideoSchema.partial()
