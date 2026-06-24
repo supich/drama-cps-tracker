@@ -79,6 +79,7 @@ export default function VariantsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedVariant, setSelectedVariant] = useState<VariantData | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const { toast } = useToast()
@@ -324,7 +325,7 @@ export default function VariantsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedVariant(variant)}>
                     查看详情
                   </Button>
                   <Button size="sm" asChild>
@@ -453,6 +454,123 @@ export default function VariantsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <VariantDetailDialog
+        variant={selectedVariant}
+        open={!!selectedVariant}
+        onOpenChange={(open) => {
+          if (!open) setSelectedVariant(null)
+        }}
+      />
     </div>
+  )
+}
+
+function VariantDetailDialog({
+  variant,
+  open,
+  onOpenChange,
+}: {
+  variant: VariantData | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  if (!variant) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{variant.variantName}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          <div className="aspect-video overflow-hidden rounded-md bg-muted">
+            {variant.coverUrl ? (
+              <img
+                src={variant.coverUrl}
+                alt={variant.variantName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <Play className="h-12 w-12 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={getStatusColor(variant.status)}>{variant.status}</Badge>
+            <Badge variant="outline">{variant.video.title}</Badge>
+            <Badge variant="secondary">{variant.video.drama.dramaName}</Badge>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">发布任务</p>
+              <p className="font-medium">{formatNumber(variant._count.publishTasks)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">数据记录</p>
+              <p className="font-medium">{formatNumber(variant._count.performanceLogs)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">创建时间</p>
+              <p className="font-medium">{formatDate(variant.createdAt)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">视频 ID</p>
+              <p className="font-mono text-xs">{variant.video.id}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">发布标题</p>
+            <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
+              {variant.title}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">发布文案</p>
+            <div className="min-h-16 rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
+              {variant.caption || '未填写'}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Hook 类型</p>
+              <p className="text-sm text-muted-foreground">{variant.hookType || '未填写'}</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">CTA 类型</p>
+              <p className="text-sm text-muted-foreground">{variant.ctaType || '未填写'}</p>
+            </div>
+          </div>
+
+          {variant.hashtags.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">话题标签</p>
+              <div className="flex flex-wrap gap-2">
+                {variant.hashtags.map((tag) => (
+                  <Badge key={tag} variant="outline">#{tag}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>关闭</Button>
+            <Button asChild>
+              <Link href={`/scheduler?variantId=${variant.id}`}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                发布
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
