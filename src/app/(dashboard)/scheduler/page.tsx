@@ -95,6 +95,7 @@ export default function SchedulerPage() {
   const [publishHoursEnd, setPublishHoursEnd] = useState(22)
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [creatingTasks, setCreatingTasks] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -179,6 +180,7 @@ export default function SchedulerPage() {
     }
 
     try {
+      setCreatingTasks(true)
       const body: Record<string, unknown> = {
         variantIds: selectedVariants,
         videoIds: selectedVideos,
@@ -217,13 +219,9 @@ export default function SchedulerPage() {
         }
 
         if (publishMode === 'NOW') {
-          const failed = result.data.publishErrors?.length || 0
           toast({
-            title: failed > 0 ? '部分发布失败' : '发布成功',
-            description: failed > 0
-              ? `已创建 ${result.data.created} 个任务，成功发布 ${result.data.published || 0} 个，失败 ${failed} 个：${result.data.publishErrors.join('；')}`
-              : `已成功发布 ${result.data.published || result.data.created} 个任务`,
-            variant: failed > 0 ? 'destructive' : undefined,
+            title: '已开始发布',
+            description: `已创建 ${result.data.created} 个发布任务，正在后台按排程发布`,
           })
           setIsDialogOpen(false)
           fetchData()
@@ -258,6 +256,8 @@ export default function SchedulerPage() {
         description: '创建批量任务失败',
         variant: 'destructive',
       })
+    } finally {
+      setCreatingTasks(false)
     }
   }
 
@@ -548,8 +548,8 @@ export default function SchedulerPage() {
                 </div>
               )}
 
-              <Button onClick={handleCreateBatchTasks} className="w-full">
-                {publishMode === 'NOW' ? '立即发布' : publishMode === 'SCHEDULED' ? '预约发布' : '创建排期任务'}
+              <Button onClick={handleCreateBatchTasks} className="w-full" disabled={creatingTasks}>
+                {creatingTasks ? '正在创建任务...' : publishMode === 'NOW' ? '立即发布' : publishMode === 'SCHEDULED' ? '预约发布' : '创建排期任务'}
               </Button>
             </div>
           </DialogContent>

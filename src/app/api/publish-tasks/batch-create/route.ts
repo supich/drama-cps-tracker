@@ -7,6 +7,21 @@ import { handleApiError, successResponse } from '@/lib/errors'
 import { addBatchPublishJobs } from '@/services/queue'
 import { executePublishTask } from '@/services/publisher'
 
+function startImmediatePublishTasks(
+  tasks: Array<{ id: string; scheduledAt: Date }>,
+  origin: string
+) {
+  for (const task of tasks) {
+    const delay = Math.max(0, task.scheduledAt.getTime() - Date.now())
+
+    setTimeout(() => {
+      executePublishTask(task.id, { origin }).catch(error => {
+        console.error(`Immediate publish task ${task.id} failed:`, error)
+      })
+    }, delay)
+  }
+}
+
 // POST /api/publish-tasks/batch-create - 批量创建发布任务
 export async function POST(request: NextRequest) {
   try {
@@ -29,24 +44,11 @@ export async function POST(request: NextRequest) {
     })
     
     if (result.created > 0 && validatedData.publishMode === 'NOW') {
-      const publishErrors: string[] = []
-      let published = 0
-
-      for (const task of result.tasks) {
-        try {
-          await executePublishTask(task.id, {
-            origin: new URL(request.url).origin,
-          })
-          published++
-        } catch (error: any) {
-          publishErrors.push(error?.message || `Task ${task.id} failed`)
-        }
-      }
+      startImmediatePublishTasks(result.tasks, new URL(request.url).origin)
 
       return NextResponse.json(successResponse({
         ...result,
-        published,
-        publishErrors,
+        queuedForPublish: result.created,
       }))
     }
 
