@@ -66,7 +66,7 @@ export class MetaClient {
       const response: AxiosResponse<MetaAPIResponse<MetaUserPageAccount[]>> =
         await this.client.get('/me/accounts', {
           params: {
-            fields: 'id,name,access_token,category,tasks,perms',
+            fields: 'id,name,access_token,category,tasks',
             access_token: userAccessToken,
           },
         })

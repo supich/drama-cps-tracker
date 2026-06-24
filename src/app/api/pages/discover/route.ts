@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         pageName: page.name,
         accessToken: page.access_token,
         category: page.category,
-        tasks: page.tasks || page.perms || [],
+        tasks: page.tasks || [],
       })),
     }))
   } catch (error) {

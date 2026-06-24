@@ -31,7 +31,6 @@ export interface MetaUserPageAccount {
   access_token: string
   category?: string
   tasks?: string[]
-  perms?: string[]
 }
 
 export interface MetaPostInsights {
