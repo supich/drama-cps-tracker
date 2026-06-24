@@ -105,37 +105,70 @@ export class PageService {
     // 检查Page ID是否已存在
     const existingPage = await this.getPageByPageId(data.pageId)
     if (existingPage) {
-      throw new ConflictError(`Page with ID ${data.pageId} already exists`)
+      if (existingPage.status !== 'BANNED') {
+        throw new ConflictError(`主页 ${data.pageName || data.pageId} 已存在`)
+      }
+
+      const pageMetadata = await this.preparePageMetadata(data.pageId, data.accessToken)
+
+      return prisma.facebookPage.update({
+        where: { id: existingPage.id },
+        data: {
+          ...data,
+          ...pageMetadata,
+          status: 'ACTIVE',
+          todayPostCount: 0,
+          consecutiveFailures: 0,
+          healthScore: Math.max(existingPage.healthScore, 90),
+          dailyPostLimit: data.dailyPostLimit || existingPage.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,
+        },
+      })
     }
     
-    // 验证token（可选）
+    const pageMetadata = await this.preparePageMetadata(data.pageId, data.accessToken)
+    
+    return prisma.facebookPage.create({
+      data: {
+        ...data,
+        ...pageMetadata,
+        dailyPostLimit: data.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,
+      },
+    })
+  }
+
+  private async preparePageMetadata(pageId: string, accessToken: string) {
     let tokenExpiresAt = null
+    let fansCount = 0
+    let coverUrl = undefined
+    let profilePicUrl = undefined
+    let category = undefined
+
     try {
-      const tokenInfo = await metaClient.validatePageToken(data.accessToken)
+      const tokenInfo = await metaClient.validatePageToken(accessToken)
       if (tokenInfo.expires_at > 0) {
         tokenExpiresAt = new Date(tokenInfo.expires_at * 1000)
       }
     } catch (error) {
       console.warn('Could not validate token, proceeding with creation:', error)
     }
-    
-    // 获取页面信息（可选）
-    let fansCount = 0
+
     try {
-      const pageInfo = await metaClient.getPageInfo(data.pageId, data.accessToken)
+      const pageInfo = await metaClient.getPageInfo(pageId, accessToken)
       fansCount = pageInfo.fan_count || 0
+      coverUrl = pageInfo.cover?.source
+      profilePicUrl = pageInfo.picture?.data?.url
+      category = pageInfo.category
     } catch (error) {
       console.warn('Could not fetch page info:', error)
     }
-    
-    return prisma.facebookPage.create({
-      data: {
-        ...data,
-        tokenExpiresAt,
-        fansCount,
-        dailyPostLimit: data.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,
-      },
-    })
+
+    return {
+      tokenExpiresAt,
+      fansCount,
+      coverUrl,
+      profilePicUrl,
+      category,
+    }
   }
 
   // 更新主页信息
