@@ -1,3 +1,5 @@
+import { ZodError } from 'zod'
+
 // 自定义错误类
 export class AppError extends Error {
   constructor(
@@ -63,6 +65,17 @@ export class MetaAPIError extends AppError {
 // 错误处理函数
 export function handleApiError(error: unknown) {
   console.error('API Error:', error)
+
+  if (error instanceof ZodError) {
+    return {
+      success: false,
+      error: {
+        message: error.issues.map(issue => issue.message).join('；'),
+        code: 'VALIDATION_ERROR',
+      },
+      statusCode: 400,
+    }
+  }
   
   if (error instanceof AppError) {
     return {

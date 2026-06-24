@@ -46,7 +46,7 @@ export const updateVideoSchema = createVideoSchema.partial()
 export const createVariantSchema = z.object({
   videoId: z.string(),
   variantName: z.string().min(1).max(255),
-  title: z.string().min(1).max(500),
+  title: z.string().min(1, '请填写发布标题').max(2000, '发布标题最多 2000 个字符'),
   caption: z.string().optional(),
   coverUrl: z.string().optional(),
   hookType: z.string().optional(),
