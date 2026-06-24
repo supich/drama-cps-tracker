@@ -22,7 +22,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { formatNumber, getStatusColor, getHealthScoreColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Facebook, Plus, Search, MoreHorizontal, RefreshCw } from 'lucide-react'
+import { Facebook, Plus, Search, RefreshCw, ShieldCheck } from 'lucide-react'
 
 interface FacebookPage {
   id: string
@@ -114,6 +114,35 @@ export default function PagesPage() {
       toast({
         title: '错误',
         description: '恢复主页失败',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleValidateToken = async (pageId: string) => {
+    try {
+      const response = await fetch(`/api/pages/${pageId}/validate-token`, { method: 'POST' })
+      const result = await response.json()
+
+      if (result.success) {
+        const scopes = result.data.scopes?.join(', ') || '未返回权限列表'
+        toast({
+          title: result.data.isValid ? 'Token 有效' : 'Token 无效',
+          description: `权限：${scopes}`,
+          variant: result.data.isValid ? undefined : 'destructive',
+        })
+        fetchPages()
+      } else {
+        toast({
+          title: 'Token 验证失败',
+          description: result.error?.message || '无法验证主页 Token',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({
+        title: 'Token 验证失败',
+        description: '无法验证主页 Token',
         variant: 'destructive',
       })
     }
@@ -253,8 +282,9 @@ export default function PagesPage() {
                       恢复
                     </Button>
                   ) : null}
-                  <Button variant="ghost" size="sm">
-                    详情
+                  <Button variant="ghost" size="sm" onClick={() => handleValidateToken(page.id)}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    验证Token
                   </Button>
                 </div>
               </CardContent>

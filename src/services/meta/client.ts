@@ -24,6 +24,10 @@ export class MetaClient {
   // 验证 Page Access Token
   async validatePageToken(accessToken: string): Promise<MetaTokenInfo> {
     try {
+      if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
+        throw new MetaAPIError('缺少 META_APP_ID 或 META_APP_SECRET，无法验证 Facebook Token')
+      }
+
       const response: AxiosResponse<MetaAPIResponse<MetaTokenInfo>> = await this.client.get(
         '/debug_token',
         {
@@ -140,8 +144,12 @@ export class MetaClient {
       if (error instanceof MetaAPIError) throw error
       const metaError = error.response?.data?.error
       if (metaError) {
+        const permissionHint = metaError.code === 100 && /permission/i.test(metaError.message || '')
+          ? '请确认该主页保存的是 Page Access Token，不是 User Token；Token 需要具备发布视频/主页发帖权限，并且授权用户需要拥有该主页的完整管理权限。'
+          : null
         const details = [
           metaError.message,
+          permissionHint,
           metaError.type ? `type: ${metaError.type}` : null,
           metaError.code ? `code: ${metaError.code}` : null,
           metaError.error_subcode ? `subcode: ${metaError.error_subcode}` : null,
