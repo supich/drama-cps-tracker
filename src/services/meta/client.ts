@@ -22,11 +22,59 @@ export class MetaClient {
     })
   }
 
+  // 获取当前 access token 对应的主体。Page Access Token 会返回主页本身。
+  async getAccessTokenSubject(accessToken: string): Promise<{ id: string; name?: string }> {
+    try {
+      const response: AxiosResponse<MetaAPIResponse<{ id: string; name?: string }> | { id: string; name?: string }> =
+        await this.client.get('/me', {
+          params: {
+            fields: 'id,name',
+            access_token: accessToken,
+          },
+        })
+
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
+        throw new MetaAPIError(metaError.message, metaError)
+      }
+
+      const subject = 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as { id: string; name?: string }
+
+      if (!subject?.id) {
+        throw new MetaAPIError('No token subject returned')
+      }
+
+      return subject
+    } catch (error: any) {
+      if (error instanceof MetaAPIError) throw error
+      throw new MetaAPIError(
+        `Failed to inspect token owner: ${error.message}`,
+        error.response?.data?.error,
+        error.response?.status || 400
+      )
+    }
+  }
+
   // 验证 Page Access Token
   async validatePageToken(accessToken: string): Promise<MetaTokenInfo> {
     try {
       if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
-        throw new MetaAPIError('缺少 META_APP_ID 或 META_APP_SECRET，无法验证 Facebook Token')
+        const subject = await this.getAccessTokenSubject(accessToken)
+
+        return {
+          app_id: '',
+          type: 'UNKNOWN',
+          application: '',
+          data_access_expires_at: 0,
+          expires_at: 0,
+          is_valid: true,
+          scopes: [],
+          user_id: subject.id,
+        }
       }
 
       const response: AxiosResponse<MetaAPIResponse<MetaTokenInfo>> = await this.client.get(
@@ -96,7 +144,7 @@ export class MetaClient {
     accessToken: string
   ): Promise<MetaPageInfo> {
     try {
-      const response: AxiosResponse<MetaAPIResponse<MetaPageInfo>> =
+      const response: AxiosResponse<MetaAPIResponse<MetaPageInfo> | MetaPageInfo> =
         await this.client.get(`/${pageId}`, {
           params: {
             fields: 'id,name,category,fan_count,cover,picture',
@@ -104,18 +152,25 @@ export class MetaClient {
           },
         })
 
-      if (response.data.error) {
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
         throw new MetaAPIError(
-          response.data.error.message,
-          response.data.error
+          metaError.message,
+          metaError
         )
       }
 
-      if (!response.data.data) {
+      const pageInfo = 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as MetaPageInfo
+
+      if (!pageInfo?.id) {
         throw new MetaAPIError('No page data returned')
       }
 
-      return response.data.data
+      return pageInfo
     } catch (error: any) {
       if (error instanceof MetaAPIError) throw error
       throw new MetaAPIError(
@@ -254,7 +309,7 @@ export class MetaClient {
   }> {
     try {
       const response: AxiosResponse<
-        MetaAPIResponse<{ is_published: boolean }>
+        MetaAPIResponse<{ is_published: boolean }> | { is_published: boolean }
       > = await this.client.get(`/${pageId}`, {
         params: {
           fields: 'is_published',
@@ -262,14 +317,20 @@ export class MetaClient {
         },
       })
 
-      if (response.data.error) {
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
         throw new MetaAPIError(
-          response.data.error.message,
-          response.data.error
+          metaError.message,
+          metaError
         )
       }
 
-      const isPublished = response.data.data?.is_published ?? true
+      const pageStatus = 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as { is_published: boolean }
+      const isPublished = pageStatus.is_published ?? true
       return {
         isPublished,
         isUnpublished: !isPublished,

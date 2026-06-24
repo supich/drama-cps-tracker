@@ -19,7 +19,11 @@ export class PageService {
     const { page = 1, limit = 20, status, niche, region, search } = options
     
     const where: Prisma.FacebookPageWhereInput = {}
-    if (status) where.status = status
+    if (status) {
+      where.status = status
+    } else {
+      where.status = { not: 'BANNED' }
+    }
     if (niche) where.niche = niche
     if (region) where.region = region
     if (search) {
@@ -161,7 +165,7 @@ export class PageService {
     })
     
     if (activeTasks > 0) {
-      throw new ConflictError('Cannot delete page with active publishing tasks')
+      throw new ConflictError('该主页还有待发布或发布中的任务，请先取消任务后再删除')
     }
     
     // 软删除或标记为删除
@@ -199,7 +203,12 @@ export class PageService {
     
     try {
       const tokenInfo = await metaClient.validatePageToken(page.accessToken)
-      const isValid = tokenInfo.is_valid
+      const tokenSubject = await metaClient.getAccessTokenSubject(page.accessToken)
+      const isPageToken = tokenSubject.id === page.pageId
+      const pageInfo = isPageToken
+        ? await metaClient.getPageInfo(page.pageId, page.accessToken)
+        : null
+      const isValid = tokenInfo.is_valid && isPageToken
       
       // 更新token过期时间
       let tokenExpiresAt = null
@@ -210,12 +219,22 @@ export class PageService {
       await this.updatePage(id, {
         tokenExpiresAt,
         status: isValid ? page.status : 'WARNING',
+        fansCount: pageInfo?.fan_count ?? page.fansCount,
+        coverUrl: pageInfo?.cover?.source ?? page.coverUrl,
+        profilePicUrl: pageInfo?.picture?.data?.url ?? page.profilePicUrl,
+        category: pageInfo?.category ?? page.category,
       })
       
       return {
         isValid,
         expiresAt: tokenExpiresAt,
         scopes: tokenInfo.scopes,
+        tokenOwnerId: tokenSubject.id,
+        tokenOwnerName: tokenSubject.name,
+        expectedPageId: page.pageId,
+        message: isPageToken
+          ? 'Token 可以访问该主页'
+          : '当前保存的不是这个主页的 Page Access Token，请使用“获取主页”拿到的主页访问令牌，或重新编辑该主页的 Token',
       }
     } catch (error: any) {
       await this.updatePage(id, { status: 'WARNING' })

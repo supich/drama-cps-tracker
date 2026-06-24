@@ -22,7 +22,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { formatNumber, getStatusColor, getHealthScoreColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Facebook, Pencil, Plus, Search, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Facebook, Pencil, Plus, Search, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 
 interface FacebookPage {
   id: string
@@ -129,7 +129,7 @@ export default function PagesPage() {
         const scopes = result.data.scopes?.join(', ') || '未返回权限列表'
         toast({
           title: result.data.isValid ? 'Token 有效' : 'Token 无效',
-          description: `权限：${scopes}`,
+          description: result.data.message || `权限：${scopes}`,
           variant: result.data.isValid ? undefined : 'destructive',
         })
         fetchPages()
@@ -144,6 +144,33 @@ export default function PagesPage() {
       toast({
         title: 'Token 验证失败',
         description: '无法验证主页 Token',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleDeletePage = async (page: FacebookPage) => {
+    const confirmed = window.confirm(`确定删除主页「${page.pageName}」吗？删除后会清空保存的访问令牌。`)
+    if (!confirmed) return
+
+    try {
+      const response = await fetch(`/api/pages/${page.id}`, { method: 'DELETE' })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({ title: '成功', description: '主页已删除' })
+        fetchPages()
+      } else {
+        toast({
+          title: '删除失败',
+          description: result.error?.message || '无法删除主页',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({
+        title: '删除失败',
+        description: '无法删除主页',
         variant: 'destructive',
       })
     }
@@ -263,7 +290,7 @@ export default function PagesPage() {
                 )}
                 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {page.status === 'ACTIVE' ? (
                     <Button
                       variant="outline"
@@ -290,6 +317,10 @@ export default function PagesPage() {
                   <Button variant="ghost" size="sm" onClick={() => setEditingPage(page)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     编辑
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeletePage(page)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    删除
                   </Button>
                 </div>
               </CardContent>
