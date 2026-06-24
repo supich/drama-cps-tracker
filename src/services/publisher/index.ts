@@ -7,9 +7,9 @@ const DEFAULT_PUBLIC_BASE_URL = 'https://daily-prayer.us'
 
 function resolvePublicBaseUrl(origin?: string) {
   return (
+    origin ||
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
-    origin ||
     DEFAULT_PUBLIC_BASE_URL
   ).replace(/\/$/, '')
 }
