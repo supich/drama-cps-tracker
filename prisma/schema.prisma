@@ -215,6 +215,7 @@ model PublishTask {
   
   // Facebook 信息
   fbPostId      String?
+  fbVideoId     String?
   fbPostUrl     String?
   
   createdAt     DateTime      @default(now())
@@ -255,6 +256,7 @@ model PerformanceLog {
   variantId       String
   publishTaskId   String?
   fbPostId        String?
+  fbVideoId       String?
   
   // 数据指标
   views           Int       @default(0)

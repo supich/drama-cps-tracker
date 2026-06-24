@@ -41,6 +41,16 @@ export async function getPostInsights(postId: string, pageAccessToken: string) {
   return client.getPostInsights(postId, pageAccessToken)
 }
 
+export async function getVideoInsights(videoId: string, pageAccessToken: string) {
+  const client = getMetaClient()
+  return client.getVideoInsights(videoId, pageAccessToken)
+}
+
+export async function getObjectEngagement(objectId: string, pageAccessToken: string) {
+  const client = getMetaClient()
+  return client.getObjectEngagement(objectId, pageAccessToken)
+}
+
 export async function getPageStatus(pageId: string, pageAccessToken: string) {
   const client = getMetaClient()
   return client.getPageStatus(pageId, pageAccessToken)
@@ -60,6 +70,6 @@ export async function refreshPageData(pageId: string, pageAccessToken: string) {
 }
 
 // 导出类型
-export type { MetaPageInfo, MetaTokenInfo, MetaPostInsights, MetaUserPageAccount } from './types'
+export type { MetaPageInfo, MetaTokenInfo, MetaPostInsights, MetaUserPageAccount, MetaVideoInsights } from './types'
 export { MetaClient } from './client'
 export { MockMetaClient } from './mock'

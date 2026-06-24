@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { formatNumber, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { BarChart3, Download, TrendingUp, Eye, MousePointerClick, DollarSign, Share2, MessageCircle, ThumbsUp } from 'lucide-react'
+import { BarChart3, Download, TrendingUp, Eye, MousePointerClick, DollarSign, Share2, MessageCircle, ThumbsUp, RefreshCw } from 'lucide-react'
 
 interface PageStats {
   id: string
@@ -65,6 +65,7 @@ export default function AnalyticsPage() {
   const [statsByDrama, setStatsByDrama] = useState<DramaStats[]>([])
   const [statsByTime, setStatsByTime] = useState<TimeStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [activeTab, setActiveTab] = useState<'pages' | 'dramas' | 'time'>('pages')
   const [dateRange, setDateRange] = useState<string>('30')
   const { toast } = useToast()
@@ -132,6 +133,36 @@ export default function AnalyticsPage() {
     }
   }
 
+  const handleSyncInsights = async () => {
+    try {
+      setSyncing(true)
+      const response = await fetch('/api/analytics/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error?.message || '同步 Facebook 数据失败')
+      }
+
+      await fetchAnalytics()
+      toast({
+        title: '同步完成',
+        description: `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个`,
+      })
+    } catch (error: any) {
+      toast({
+        title: '同步失败',
+        description: error.message || '无法同步 Facebook 数据',
+        variant: 'destructive',
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const totalStats = statsByPage.reduce(
     (acc, page) => ({
       views: acc.views + (page.stats?.views || 0),
@@ -156,6 +187,10 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncInsights} disabled={syncing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? '同步中...' : '同步 Facebook 数据'}
+          </Button>
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select range" />

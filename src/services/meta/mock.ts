@@ -4,7 +4,9 @@ import {
   MetaPageInfo,
   MetaTokenInfo,
   MetaUserPageAccount,
+  MetaObjectEngagement,
   MetaPostInsights,
+  MetaVideoInsights,
   MetaPublishVideoResponse,
 } from './types'
 import { delay } from '@/lib/delay'
@@ -145,6 +147,52 @@ export class MockMetaClient {
           description: 'Total number of times the video has been viewed.',
         },
       ],
+    }
+  }
+
+  async getVideoInsights(
+    videoId: string,
+    accessToken: string
+  ): Promise<MetaVideoInsights> {
+    await mockDelay()
+
+    return {
+      data: [
+        {
+          name: 'total_video_views',
+          period: 'lifetime',
+          values: [{ value: Math.floor(Math.random() * 50000) + 5000 }],
+          title: 'Total Video Views',
+          description: 'Total number of video views.',
+        },
+        {
+          name: 'total_video_reactions_by_type_total',
+          period: 'lifetime',
+          values: [
+            {
+              value: {
+                like: Math.floor(Math.random() * 1000) + 100,
+                love: Math.floor(Math.random() * 200) + 20,
+              },
+            },
+          ],
+          title: 'Video Reactions',
+          description: 'Total video reactions by type.',
+        },
+      ],
+    }
+  }
+
+  async getObjectEngagement(
+    objectId: string,
+    accessToken: string
+  ): Promise<MetaObjectEngagement> {
+    await mockDelay()
+
+    return {
+      comments: { summary: { total_count: Math.floor(Math.random() * 100) } },
+      reactions: { summary: { total_count: Math.floor(Math.random() * 1000) } },
+      shares: { count: Math.floor(Math.random() * 50) },
     }
   }
 

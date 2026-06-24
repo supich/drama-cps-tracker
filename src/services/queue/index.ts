@@ -125,12 +125,16 @@ export async function removePublishJob(taskId: string) {
 
 // 添加数据同步任务
 export async function addInsightsJob(data: {
+  taskId?: string
   postId: string
+  videoId?: string
   pageId: string
   pageAccessToken: string
+  delayMs?: number
 }) {
   return getInsightsQueue().add('sync-insights', data, {
-    jobId: `insights-${data.postId}`,
+    jobId: `insights-${data.taskId || data.postId}-${data.delayMs || 0}`,
+    delay: data.delayMs || 0,
   })
 }
 

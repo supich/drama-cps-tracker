@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatNumber, formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
+import { useToast } from '@/components/ui/use-toast'
 import {
   Facebook,
   Video,
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   TrendingUp,
   Calendar,
+  RefreshCw,
 } from 'lucide-react'
 
 interface DashboardData {
@@ -74,7 +76,9 @@ interface DashboardData {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   
   useEffect(() => {
     fetchDashboardData()
@@ -95,6 +99,36 @@ export default function DashboardPage() {
       setError('Failed to fetch dashboard data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSyncInsights = async () => {
+    try {
+      setSyncing(true)
+      const response = await fetch('/api/analytics/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 100 }),
+      })
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error?.message || '同步 Facebook 数据失败')
+      }
+
+      await fetchDashboardData()
+      toast({
+        title: '同步完成',
+        description: `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个`,
+      })
+    } catch (error: any) {
+      toast({
+        title: '同步失败',
+        description: error.message || '无法同步 Facebook 数据',
+        variant: 'destructive',
+      })
+    } finally {
+      setSyncing(false)
     }
   }
   
@@ -128,12 +162,18 @@ export default function DashboardPage() {
             欢迎回来！这是您的发布总览。
           </p>
         </div>
-        <Button asChild>
-          <Link href="/scheduler">
-            <Calendar className="mr-2 h-4 w-4" />
-            安排发布
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncInsights} disabled={syncing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? '同步中...' : '同步 Facebook 数据'}
+          </Button>
+          <Button asChild>
+            <Link href="/scheduler">
+              <Calendar className="mr-2 h-4 w-4" />
+              安排发布
+            </Link>
+          </Button>
+        </div>
       </div>
       
       {/* Stats Cards */}

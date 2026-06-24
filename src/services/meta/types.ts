@@ -51,6 +51,29 @@ export interface MetaPostInsights {
   }>
 }
 
+export type MetaVideoInsights = MetaPostInsights
+
+export interface MetaObjectEngagement {
+  comments?: {
+    summary?: {
+      total_count?: number
+    }
+  }
+  reactions?: {
+    summary?: {
+      total_count?: number
+    }
+  }
+  likes?: {
+    summary?: {
+      total_count?: number
+    }
+  }
+  shares?: {
+    count?: number
+  }
+}
+
 export interface MetaPublishVideoResponse {
   id: string
   post_id: string

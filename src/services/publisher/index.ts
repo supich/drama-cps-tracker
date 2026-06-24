@@ -1,6 +1,7 @@
 import { pageService } from '@/services/database/pages'
 import { publishTaskService } from '@/services/database/publish-tasks'
 import { publishVideoToPage } from '@/services/meta'
+import { addInsightsJob } from '@/services/queue'
 
 function compactTitle(title: string) {
   const normalized = title.replace(/\s+/g, ' ').trim()
@@ -48,17 +49,45 @@ export async function executePublishTask(taskId: string, options: { origin?: str
 
     await publishTaskService.updateTaskStatus(taskId, 'PUBLISHED', {
       fbPostId: result.post_id,
+      fbVideoId: result.id,
       fbPostUrl: `https://facebook.com/${result.post_id}`,
     })
+
+    await scheduleInsightsSync(taskId, page.id, page.accessToken, result.post_id, result.id)
 
     return {
       success: true,
       postId: result.post_id,
+      videoId: result.id,
     }
   } catch (error: any) {
     await publishTaskService.updateTaskStatus(taskId, 'FAILED', {
       errorMessage: error.message,
     })
     throw error
+  }
+}
+
+async function scheduleInsightsSync(
+  taskId: string,
+  pageId: string,
+  pageAccessToken: string,
+  postId: string,
+  videoId: string
+) {
+  try {
+    await Promise.all([
+      addInsightsJob({ taskId, postId, videoId, pageId, pageAccessToken }),
+      addInsightsJob({
+        taskId,
+        postId,
+        videoId,
+        pageId,
+        pageAccessToken,
+        delayMs: 30 * 60 * 1000,
+      }),
+    ])
+  } catch (error) {
+    console.warn(`Failed to enqueue insights sync for task ${taskId}:`, error)
   }
 }

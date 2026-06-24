@@ -385,6 +385,7 @@ export class PublishTaskService {
   async updateTaskStatus(id: string, status: TaskStatus, data?: {
     errorMessage?: string
     fbPostId?: string
+    fbVideoId?: string
     fbPostUrl?: string
   }) {
     const task = await this.getTaskById(id)
@@ -395,6 +396,7 @@ export class PublishTaskService {
     if (status === 'PUBLISHED') {
       updateData.publishedAt = new Date()
       updateData.fbPostId = data?.fbPostId
+      updateData.fbVideoId = data?.fbVideoId
       updateData.fbPostUrl = data?.fbPostUrl
       
       // 更新页面今日发布计数

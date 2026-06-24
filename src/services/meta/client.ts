@@ -7,7 +7,9 @@ import {
   MetaTokenInfo,
   MetaUserPageAccount,
   MetaLongLivedTokenResponse,
+  MetaObjectEngagement,
   MetaPostInsights,
+  MetaVideoInsights,
   MetaPublishVideoResponse,
   MetaAPIResponse,
 } from './types'
@@ -374,7 +376,7 @@ export class MetaClient {
         'post_video_views',
       ].join(',')
 
-      const response: AxiosResponse<MetaAPIResponse<MetaPostInsights>> =
+      const response: AxiosResponse<MetaPostInsights | MetaAPIResponse<MetaPostInsights['data']>> =
         await this.client.get(`/${postId}/insights`, {
           params: {
             metric: metrics,
@@ -382,23 +384,125 @@ export class MetaClient {
           },
         })
 
-      if (response.data.error) {
+      const responseData = response.data as MetaPostInsights & { error?: MetaAPIResponse<unknown>['error'] }
+
+      if (responseData.error) {
         throw new MetaAPIError(
-          response.data.error.message,
-          response.data.error
+          responseData.error.message,
+          responseData.error
         )
       }
 
-      if (!response.data.data) {
+      if (!responseData.data) {
         throw new MetaAPIError('No insights data returned')
       }
 
-      return response.data.data
+      return Array.isArray(responseData.data)
+        ? { data: responseData.data }
+        : responseData.data
     } catch (error: any) {
       if (error instanceof MetaAPIError) throw error
       throw new MetaAPIError(
         `Failed to get post insights: ${error.message}`,
         error.response?.data?.error
+      )
+    }
+  }
+
+  // 获取 Facebook 视频 Insights。需要 Page Access Token 具备 read_insights。
+  async getVideoInsights(
+    videoId: string,
+    accessToken: string
+  ): Promise<MetaVideoInsights> {
+    const metricSets = [
+      [
+        'total_video_views',
+        'total_video_impressions',
+        'total_video_complete_views',
+        'total_video_10s_views',
+        'total_video_reactions_by_type_total',
+      ],
+      ['total_video_views', 'total_video_reactions_by_type_total'],
+      ['total_video_views'],
+    ]
+
+    let lastError: any
+
+    for (const metricSet of metricSets) {
+      try {
+        const response: AxiosResponse<MetaVideoInsights | MetaAPIResponse<MetaVideoInsights['data']>> =
+          await this.client.get(`/${videoId}/video_insights`, {
+            params: {
+              metric: metricSet.join(','),
+              access_token: accessToken,
+            },
+          })
+
+        const responseData = response.data as MetaVideoInsights & { error?: MetaAPIResponse<unknown>['error'] }
+
+        if (responseData.error) {
+          throw new MetaAPIError(
+            responseData.error.message,
+            responseData.error
+          )
+        }
+
+        if (!responseData.data) {
+          throw new MetaAPIError('No video insights data returned')
+        }
+
+        return Array.isArray(responseData.data)
+          ? { data: responseData.data }
+          : responseData.data
+      } catch (error: any) {
+        lastError = error
+      }
+    }
+
+    if (lastError instanceof MetaAPIError) throw lastError
+
+    const metaError = lastError?.response?.data?.error
+    const permissionHint = metaError?.code === 10 || /permission|read_insights/i.test(metaError?.message || '')
+      ? '请确认该 Page Access Token 包含 read_insights，并且授权用户对主页拥有分析权限。'
+      : null
+
+    throw new MetaAPIError(
+      `Failed to get video insights: ${[metaError?.message || lastError?.message, permissionHint].filter(Boolean).join(' ')}`,
+      metaError,
+      lastError?.response?.status || 400
+    )
+  }
+
+  // 获取帖子/视频对象的互动摘要，用于补充评论、分享、总互动数。
+  async getObjectEngagement(
+    objectId: string,
+    accessToken: string
+  ): Promise<MetaObjectEngagement> {
+    try {
+      const response: AxiosResponse<MetaAPIResponse<MetaObjectEngagement> | MetaObjectEngagement> =
+        await this.client.get(`/${objectId}`, {
+          params: {
+            fields: 'comments.limit(0).summary(true),reactions.limit(0).summary(true),likes.limit(0).summary(true),shares',
+            access_token: accessToken,
+          },
+        })
+
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
+        throw new MetaAPIError(metaError.message, metaError)
+      }
+
+      return 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as MetaObjectEngagement
+    } catch (error: any) {
+      if (error instanceof MetaAPIError) throw error
+      throw new MetaAPIError(
+        `Failed to get object engagement: ${error.message}`,
+        error.response?.data?.error,
+        error.response?.status || 400
       )
     }
   }
