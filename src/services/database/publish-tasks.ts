@@ -1,9 +1,9 @@
 import prisma from '@/lib/prisma'
 import { TaskStatus, Prisma } from '@prisma/client'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors'
-import { RISK_RULES } from '@/lib/constants'
 import { pageService } from './pages'
 import { variantService } from './variants'
+import { settingsService } from './settings'
 
 type PublishMode = 'NOW' | 'SCHEDULED' | 'SMART'
 
@@ -131,8 +131,7 @@ export class PublishTaskService {
       scheduledAt,
       startDate,
       endDate,
-      staggerMin = RISK_RULES.MIN_STAGGER_INTERVAL,
-      staggerMax = RISK_RULES.MAX_STAGGER_INTERVAL,
+      staggerMin,
       publishHoursStart = 8,
       publishHoursEnd = 22,
     } = params
@@ -149,6 +148,9 @@ export class PublishTaskService {
     if (publishMode === 'SCHEDULED' && !scheduledAt) {
       throw new ValidationError('Scheduled publish time is required')
     }
+
+    const riskRules = await settingsService.getRiskRules()
+    const effectiveStaggerMin = staggerMin ?? riskRules.MIN_STAGGER_INTERVAL
 
     const fixedPublishTime = publishMode === 'NOW'
       ? new Date()
@@ -188,7 +190,7 @@ export class PublishTaskService {
       where: {
         id: { in: pageIds },
         status: 'ACTIVE',
-        healthScore: { gte: RISK_RULES.HEALTH_SCORE_THRESHOLD },
+        healthScore: { gte: riskRules.HEALTH_SCORE_THRESHOLD },
       },
     })
     
@@ -247,7 +249,7 @@ export class PublishTaskService {
         let offset = 0
 
         for (const variant of availableVariants) {
-          const taskScheduledAt = new Date(fixedPublishTime!.getTime() + offset * staggerMin * 60 * 1000)
+          const taskScheduledAt = new Date(fixedPublishTime!.getTime() + offset * effectiveStaggerMin * 60 * 1000)
           const dayStart = new Date(taskScheduledAt)
           dayStart.setHours(0, 0, 0, 0)
           const dayEnd = new Date(taskScheduledAt)
@@ -321,7 +323,7 @@ export class PublishTaskService {
           // 检查与同页面其他任务的间隔
           const tooClose = pageSchedule[page.id].some(existing => {
             const diff = Math.abs(existing.getTime() - scheduledAt.getTime())
-            return diff < staggerMin * 60 * 1000
+            return diff < effectiveStaggerMin * 60 * 1000
           })
           
           if (!tooClose) {
@@ -386,6 +388,7 @@ export class PublishTaskService {
     fbPostUrl?: string
   }) {
     const task = await this.getTaskById(id)
+    const riskRules = await settingsService.getRiskRules()
     
     const updateData: Prisma.PublishTaskUpdateInput = { status }
     
@@ -398,7 +401,7 @@ export class PublishTaskService {
       await pageService.incrementDailyCount(task.pageId)
       
       // 增加页面健康分
-      await pageService.updateHealthScore(task.pageId, RISK_RULES.HEALTH_SCORE.PUBLISH_SUCCESS, 'Publish success')
+      await pageService.updateHealthScore(task.pageId, riskRules.HEALTH_SCORE.PUBLISH_SUCCESS, 'Publish success')
     }
     
     if (status === 'FAILED') {
@@ -406,14 +409,14 @@ export class PublishTaskService {
       updateData.retryCount = { increment: 1 }
       
       // 减少页面健康分
-      await pageService.updateHealthScore(task.pageId, RISK_RULES.HEALTH_SCORE.PUBLISH_FAIL, 'Publish failed')
+      await pageService.updateHealthScore(task.pageId, riskRules.HEALTH_SCORE.PUBLISH_FAIL, 'Publish failed')
       
       // 检查连续失败次数
       const consecutiveFailures = await this.getConsecutiveFailures(task.pageId)
-      if (consecutiveFailures >= RISK_RULES.CONSECUTIVE_FAIL_THRESHOLD) {
+      if (consecutiveFailures >= riskRules.CONSECUTIVE_FAIL_THRESHOLD) {
         await pageService.updateHealthScore(
           task.pageId,
-          RISK_RULES.HEALTH_SCORE.CONSECUTIVE_FAIL,
+          riskRules.HEALTH_SCORE.CONSECUTIVE_FAIL,
           `${consecutiveFailures} consecutive failures`
         )
         await pageService.pausePage(task.pageId)
@@ -477,13 +480,14 @@ export class PublishTaskService {
   // 重试失败任务
   async retryTask(id: string) {
     const task = await this.getTaskById(id)
+    const riskRules = await settingsService.getRiskRules()
     
     if (task.status !== 'FAILED') {
       throw new ConflictError('Can only retry failed tasks')
     }
     
-    if (task.retryCount >= RISK_RULES.MAX_RETRY_COUNT) {
-      throw new ConflictError(`Maximum retry count (${RISK_RULES.MAX_RETRY_COUNT}) exceeded`)
+    if (task.retryCount >= riskRules.MAX_RETRY_COUNT) {
+      throw new ConflictError(`Maximum retry count (${riskRules.MAX_RETRY_COUNT}) exceeded`)
     }
     
     return prisma.publishTask.update({

@@ -33,6 +33,12 @@ export interface MetaUserPageAccount {
   tasks?: string[]
 }
 
+export interface MetaLongLivedTokenResponse {
+  access_token: string
+  token_type?: string
+  expires_in?: number
+}
+
 export interface MetaPostInsights {
   data: Array<{
     name: string

@@ -43,11 +43,32 @@ export default function SettingsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
+    fetchSettings()
     fetch('/api/system/env')
       .then(r => r.json())
       .then(result => { if (result.success) setEnvInfo(result.data) })
       .catch(() => {})
   }, [])
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/settings')
+      const result = await response.json()
+
+      if (result.success) {
+        setSettings(result.data.settings)
+      }
+    } catch {
+      toast({
+        title: '错误',
+        description: '获取系统设置失败',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSettingChange = (key: string, value: string) => {
     setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s))
@@ -56,11 +77,28 @@ export default function SettingsPage() {
   const handleSaveSettings = async () => {
     setSaving(true)
     try {
-      // 这里应该调用API保存设置到数据库
-      // 为简化示例，我们只显示成功消息
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: settings.map(({ key, value }) => ({ key, value })),
+        }),
+      })
+      const result = await response.json()
+
+      if (!result.success) {
+        toast({
+          title: '错误',
+          description: result.error?.message || '保存设置失败',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      setSettings(result.data.settings)
       toast({
         title: '保存成功',
-        description: '设置已保存',
+        description: '设置已保存并会应用到后续任务',
       })
     } catch (error) {
       toast({
@@ -114,7 +152,9 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {settings.slice(0, 3).map((setting) => (
+            {loading ? (
+              <p className="text-sm text-muted-foreground">加载中...</p>
+            ) : settings.slice(0, 3).map((setting) => (
               <div key={setting.key} className="space-y-2">
                 <Label htmlFor={setting.key}>{setting.description}</Label>
                 <Input

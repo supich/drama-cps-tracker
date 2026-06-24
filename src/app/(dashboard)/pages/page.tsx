@@ -367,6 +367,7 @@ interface AddPageDialogProps {
 function AddPageDialog({ open, onOpenChange, existingPages, onSuccess }: AddPageDialogProps) {
   const [userAccessToken, setUserAccessToken] = useState('')
   const [discovering, setDiscovering] = useState(false)
+  const [exchangingToken, setExchangingToken] = useState(false)
   const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([])
   const [formData, setFormData] = useState({
@@ -426,6 +427,45 @@ function AddPageDialog({ open, onOpenChange, existingPages, onSuccess }: AddPage
       toast({ title: '错误', description: '获取主页失败', variant: 'destructive' })
     } finally {
       setDiscovering(false)
+    }
+  }
+
+  const handleExchangeUserToken = async () => {
+    if (!userAccessToken.trim()) {
+      toast({ title: '错误', description: '请先粘贴用户访问口令', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setExchangingToken(true)
+      const response = await fetch('/api/pages/exchange-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAccessToken: userAccessToken.trim() }),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setUserAccessToken(result.data.accessToken)
+        setDiscoveredPages([])
+        setSelectedPageIds([])
+        toast({
+          title: '转换成功',
+          description: result.data.expiresAt
+            ? `长期口令有效期至 ${new Date(result.data.expiresAt).toLocaleString('zh-CN')}`
+            : '已转换为长期用户口令',
+        })
+      } else {
+        toast({
+          title: '转换失败',
+          description: result.error?.message || '无法转换长期用户口令',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({ title: '转换失败', description: '无法转换长期用户口令', variant: 'destructive' })
+    } finally {
+      setExchangingToken(false)
     }
   }
 
@@ -568,10 +608,21 @@ function AddPageDialog({ open, onOpenChange, existingPages, onSuccess }: AddPage
                 value={userAccessToken}
                 onChange={(e) => setUserAccessToken(e.target.value)}
               />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExchangeUserToken}
+                disabled={exchangingToken}
+              >
+                {exchangingToken ? '转换中...' : '转长期口令'}
+              </Button>
               <Button type="button" variant="outline" onClick={handleDiscoverPages} disabled={discovering}>
                 {discovering ? '获取中...' : '获取主页'}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              先将短期用户口令转换为长期口令，再获取主页，可拿到更稳定的主页访问令牌。
+            </p>
             {discoveredPages.length > 0 && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">

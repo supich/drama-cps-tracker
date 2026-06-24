@@ -1,8 +1,8 @@
 import prisma from '@/lib/prisma'
 import { PageStatus, Prisma } from '@prisma/client'
 import { NotFoundError, ConflictError } from '@/lib/errors'
-import { RISK_RULES } from '@/lib/constants'
 import { MetaClient } from '../meta/client'
+import { settingsService } from './settings'
 
 const metaClient = new MetaClient()
 
@@ -104,6 +104,7 @@ export class PageService {
   }) {
     // 检查Page ID是否已存在
     const existingPage = await this.getPageByPageId(data.pageId)
+    const riskRules = await settingsService.getRiskRules()
     if (existingPage) {
       const pageMetadata = await this.preparePageMetadata(data.pageId, data.accessToken)
       const reactivated = existingPage.status === 'BANNED'
@@ -125,7 +126,7 @@ export class PageService {
           todayPostCount: reactivated ? 0 : existingPage.todayPostCount,
           consecutiveFailures: 0,
           healthScore: Math.max(existingPage.healthScore, 90),
-          dailyPostLimit: data.dailyPostLimit || existingPage.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,
+          dailyPostLimit: data.dailyPostLimit || existingPage.dailyPostLimit || riskRules.DEFAULT_DAILY_POST_LIMIT,
         },
       })
     }
@@ -136,7 +137,7 @@ export class PageService {
       data: {
         ...data,
         ...pageMetadata,
-        dailyPostLimit: data.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,
+        dailyPostLimit: data.dailyPostLimit || riskRules.DEFAULT_DAILY_POST_LIMIT,
       },
     })
   }
@@ -224,11 +225,12 @@ export class PageService {
   // 恢复主页
   async resumePage(id: string) {
     const page = await this.getPageById(id)
+    const riskRules = await settingsService.getRiskRules()
     
     // 检查健康分
-    if (page.healthScore < RISK_RULES.HEALTH_SCORE_THRESHOLD) {
+    if (page.healthScore < riskRules.HEALTH_SCORE_THRESHOLD) {
       throw new ConflictError(
-        `Page health score (${page.healthScore}) is below threshold (${RISK_RULES.HEALTH_SCORE_THRESHOLD})`
+        `Page health score (${page.healthScore}) is below threshold (${riskRules.HEALTH_SCORE_THRESHOLD})`
       )
     }
     
@@ -303,6 +305,7 @@ export class PageService {
   // 更新健康分
   async updateHealthScore(id: string, change: number, reason: string) {
     const page = await this.getPageById(id)
+    const riskRules = await settingsService.getRiskRules()
     const newScore = Math.max(0, Math.min(100, page.healthScore + change))
     
     // 记录健康分变更
@@ -322,7 +325,7 @@ export class PageService {
     // 更新主页健康分
     return this.updatePage(id, {
       healthScore: newScore,
-      status: newScore < RISK_RULES.HEALTH_SCORE_THRESHOLD ? 'WARNING' : page.status,
+      status: newScore < riskRules.HEALTH_SCORE_THRESHOLD ? 'WARNING' : page.status,
     })
   }
 
@@ -354,10 +357,11 @@ export class PageService {
 
   // 获取活跃主页
   async getActivePages() {
+    const riskRules = await settingsService.getRiskRules()
     return prisma.facebookPage.findMany({
       where: {
         status: 'ACTIVE',
-        healthScore: { gte: RISK_RULES.HEALTH_SCORE_THRESHOLD },
+        healthScore: { gte: riskRules.HEALTH_SCORE_THRESHOLD },
       },
     })
   }

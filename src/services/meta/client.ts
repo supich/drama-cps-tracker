@@ -5,6 +5,7 @@ import {
   MetaPageInfo,
   MetaTokenInfo,
   MetaUserPageAccount,
+  MetaLongLivedTokenResponse,
   MetaPostInsights,
   MetaPublishVideoResponse,
   MetaAPIResponse,
@@ -20,6 +21,53 @@ export class MetaClient {
       baseURL: `${META_API.BASE_URL}/${this.apiVersion}`,
       timeout: 30000,
     })
+  }
+
+  // 将短期 User Access Token 交换为长期 User Access Token
+  async exchangeUserAccessToken(userAccessToken: string): Promise<MetaLongLivedTokenResponse> {
+    try {
+      if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
+        throw new MetaAPIError('缺少 META_APP_ID 或 META_APP_SECRET，无法转换长期用户口令')
+      }
+
+      const response: AxiosResponse<MetaLongLivedTokenResponse | MetaAPIResponse<MetaLongLivedTokenResponse>> =
+        await this.client.get('/oauth/access_token', {
+          params: {
+            grant_type: 'fb_exchange_token',
+            client_id: process.env.META_APP_ID,
+            client_secret: process.env.META_APP_SECRET,
+            fb_exchange_token: userAccessToken,
+          },
+        })
+
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
+        throw new MetaAPIError(metaError.message, metaError)
+      }
+
+      const tokenData = 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as MetaLongLivedTokenResponse
+
+      if (!tokenData.access_token) {
+        throw new MetaAPIError('No long-lived token returned')
+      }
+
+      return tokenData
+    } catch (error: any) {
+      if (error instanceof MetaAPIError) throw error
+      const metaError = error.response?.data?.error
+      if (metaError) {
+        throw new MetaAPIError(
+          `转换长期用户口令失败：${metaError.message}`,
+          metaError,
+          error.response?.status || 400
+        )
+      }
+      throw new MetaAPIError(`转换长期用户口令失败：${error.message}`)
+    }
   }
 
   // 获取当前 access token 对应的主体。Page Access Token 会返回主页本身。
