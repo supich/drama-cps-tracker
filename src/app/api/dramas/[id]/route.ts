@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { dramaService } from '@/services/database/dramas'
 import { updateDramaSchema } from '@/lib/validations'
-import { handleApiError, successResponse, NotFoundError } from '@/lib/errors'
+import { handleApiError, successResponse } from '@/lib/errors'
 
 // GET /api/dramas/:id
 export async function GET(
@@ -11,11 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const drama = await prisma.drama.findUnique({
-      where: { id: params.id },
-      include: { _count: { select: { videos: true } } },
-    })
-    if (!drama) throw new NotFoundError('剧集不存在')
+    const drama = await dramaService.getDramaById(params.id)
     return NextResponse.json(successResponse(drama))
   } catch (error) {
     const errorResponse = handleApiError(error)
@@ -32,10 +28,7 @@ export async function PATCH(
     const body = await request.json()
     const validatedData = updateDramaSchema.parse(body)
 
-    const drama = await prisma.drama.update({
-      where: { id: params.id },
-      data: validatedData,
-    })
+    const drama = await dramaService.updateDrama(params.id, validatedData)
     return NextResponse.json(successResponse(drama))
   } catch (error) {
     const errorResponse = handleApiError(error)
@@ -49,7 +42,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.drama.delete({ where: { id: params.id } })
+    await dramaService.deleteDrama(params.id)
     return NextResponse.json(successResponse({ deleted: true }))
   } catch (error) {
     const errorResponse = handleApiError(error)

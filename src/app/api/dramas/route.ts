@@ -1,9 +1,12 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { dramaService } from '@/services/database/dramas'
 import { createDramaSchema, paginationSchema } from '@/lib/validations'
 import { handleApiError, successResponse } from '@/lib/errors'
+import { DramaStatus } from '@prisma/client'
+
+const dramaStatuses = new Set<string>(Object.values(DramaStatus))
 
 // GET /api/dramas - 获取所有剧集
 export async function GET(request: NextRequest) {
@@ -13,40 +16,21 @@ export async function GET(request: NextRequest) {
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),
       search: searchParams.get('search'),
+      status: searchParams.get('status'),
+    })
+    const status = params.status && dramaStatuses.has(params.status)
+      ? params.status as DramaStatus
+      : undefined
+    
+    const result = await dramaService.getDramas({
+      page: params.page,
+      limit: params.limit,
+      status,
+      search: params.search,
+      language: searchParams.get('language') || undefined,
     })
     
-    const where: any = {}
-    if (params.search) {
-      where.OR = [
-        { dramaName: { contains: params.search, mode: 'insensitive' } },
-        { description: { contains: params.search, mode: 'insensitive' } },
-      ]
-    }
-    
-    const [dramas, total] = await Promise.all([
-      prisma.drama.findMany({
-        where,
-        skip: (params.page - 1) * params.limit,
-        take: params.limit,
-        orderBy: { updatedAt: 'desc' },
-        include: {
-          _count: {
-            select: { videos: true },
-          },
-        },
-      }),
-      prisma.drama.count({ where }),
-    ])
-    
-    return NextResponse.json(successResponse({
-      dramas,
-      pagination: {
-        page: params.page,
-        limit: params.limit,
-        total,
-        pages: Math.ceil(total / params.limit),
-      },
-    }))
+    return NextResponse.json(successResponse(result))
   } catch (error) {
     const errorResponse = handleApiError(error)
     return NextResponse.json(errorResponse, { status: errorResponse.statusCode })
@@ -59,9 +43,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createDramaSchema.parse(body)
     
-    const drama = await prisma.drama.create({
-      data: validatedData,
-    })
+    const drama = await dramaService.createDrama(validatedData)
     
     return NextResponse.json(successResponse(drama, 201))
   } catch (error) {

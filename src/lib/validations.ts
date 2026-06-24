@@ -19,9 +19,11 @@ export const updatePageSchema = createPageSchema.partial()
 export const createDramaSchema = z.object({
   dramaName: z.string().min(1).max(255),
   description: z.string().optional(),
+  coverUrl: z.string().min(1).optional(),
   language: z.string().default('en'),
   tags: z.array(z.string()).optional(),
   cpsBaseUrl: z.string().url().optional(),
+  status: z.enum(['ACTIVE', 'ARCHIVED', 'BANNED']).default('ACTIVE'),
 })
 
 export const updateDramaSchema = createDramaSchema.partial()
