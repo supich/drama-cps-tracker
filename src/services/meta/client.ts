@@ -100,7 +100,7 @@ export class MetaClient {
   ): Promise<MetaPublishVideoResponse> {
     try {
       const response: AxiosResponse<
-        MetaAPIResponse<MetaPublishVideoResponse>
+        MetaAPIResponse<MetaPublishVideoResponse> | MetaPublishVideoResponse
       > = await this.client.post(`/${pageId}/videos`, {
         access_token: accessToken,
         file_url: videoUrl,
@@ -109,18 +109,28 @@ export class MetaClient {
         published: true,
       })
 
-      if (response.data.error) {
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
         throw new MetaAPIError(
-          response.data.error.message,
-          response.data.error
+          metaError.message,
+          metaError
         )
       }
 
-      if (!response.data.data) {
+      const publishData = 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as MetaPublishVideoResponse
+
+      if (!publishData?.id) {
         throw new MetaAPIError('No publish response data')
       }
 
-      return response.data.data
+      return {
+        id: publishData.id,
+        post_id: publishData.post_id || publishData.id,
+      }
     } catch (error: any) {
       if (error instanceof MetaAPIError) throw error
       throw new MetaAPIError(

@@ -8,6 +8,8 @@ export async function GET() {
   const env = {
     NODE_ENV: process.env.NODE_ENV || 'unknown',
     META_APP_ID: process.env.META_APP_ID ? 'configured' : 'not set',
+    META_APP_SECRET: process.env.META_APP_SECRET ? 'configured' : 'not set',
+    USE_META_MOCK: process.env.USE_META_MOCK || 'false',
     DATABASE_URL: process.env.DATABASE_URL
       ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@').replace(/\/\/[^:]+:[^@]+@/, '//***:***@').substring(0, 40) + '...'
       : 'not set',

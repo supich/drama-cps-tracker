@@ -1,8 +1,8 @@
 import { MetaClient, metaClient } from './client'
 import { MockMetaClient, mockMetaClient } from './mock'
 
-// 根据环境选择使用真实 API 或 Mock
-const useMock = process.env.NODE_ENV === 'development' || !process.env.META_APP_ID
+// 只有显式开启 USE_META_MOCK=true 时才使用 Mock，避免生产环境“假发布成功”
+const useMock = process.env.USE_META_MOCK === 'true'
 
 export const getMetaClient = () => {
   return useMock ? mockMetaClient : metaClient
