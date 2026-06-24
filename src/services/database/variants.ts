@@ -12,12 +12,16 @@ export class VariantService {
     videoId?: string
     status?: VariantStatus
     search?: string
+    includeOriginal?: boolean
   } = {}) {
-    const { page = 1, limit = 20, videoId, status, search } = options
+    const { page = 1, limit = 20, videoId, status, search, includeOriginal = false } = options
     
     const where: Prisma.VideoVariantWhereInput = {}
     if (videoId) where.videoId = videoId
     if (status) where.status = status
+    if (!includeOriginal) {
+      where.variantName = { not: ORIGINAL_VIDEO_VARIANT_NAME }
+    }
     if (search) {
       where.OR = [
         { variantName: { contains: search, mode: 'insensitive' } },
