@@ -3,6 +3,7 @@
 import {
   MetaPageInfo,
   MetaTokenInfo,
+  MetaUserPageAccount,
   MetaPostInsights,
   MetaPublishVideoResponse,
 } from './types'
@@ -36,6 +37,20 @@ export class MockMetaClient {
     }
     
     throw new Error('Invalid token')
+  }
+
+  async getUserPages(userAccessToken: string): Promise<MetaUserPageAccount[]> {
+    await mockDelay()
+
+    return [
+      {
+        id: '123456789012345',
+        name: 'Mock Drama Page',
+        access_token: 'mock-page-access-token',
+        category: 'Entertainment',
+        tasks: ['CREATE_CONTENT', 'MANAGE'],
+      },
+    ]
   }
 
   // 获取 Page 信息

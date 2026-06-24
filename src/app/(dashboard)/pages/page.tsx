@@ -22,7 +22,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { formatNumber, getStatusColor, getHealthScoreColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Facebook, Plus, Search, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Facebook, Pencil, Plus, Search, RefreshCw, ShieldCheck } from 'lucide-react'
 
 interface FacebookPage {
   id: string
@@ -50,6 +50,7 @@ export default function PagesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [editingPage, setEditingPage] = useState<FacebookPage | null>(null)
   const { toast } = useToast()
   
   useEffect(() => {
@@ -286,6 +287,10 @@ export default function PagesPage() {
                     <ShieldCheck className="mr-2 h-4 w-4" />
                     验证Token
                   </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingPage(page)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    编辑
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -299,8 +304,24 @@ export default function PagesPage() {
         onOpenChange={setIsAddDialogOpen}
         onSuccess={fetchPages}
       />
+      <EditPageDialog
+        page={editingPage}
+        open={!!editingPage}
+        onOpenChange={(open) => {
+          if (!open) setEditingPage(null)
+        }}
+        onSuccess={fetchPages}
+      />
     </div>
   )
+}
+
+interface DiscoveredPage {
+  pageId: string
+  pageName: string
+  accessToken: string
+  category?: string
+  tasks: string[]
 }
 
 interface AddPageDialogProps {
@@ -310,6 +331,9 @@ interface AddPageDialogProps {
 }
 
 function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
+  const [userAccessToken, setUserAccessToken] = useState('')
+  const [discovering, setDiscovering] = useState(false)
+  const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([])
   const [formData, setFormData] = useState({
     pageId: '',
     pageName: '',
@@ -322,6 +346,59 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
   })
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
+  const resetForm = () => {
+    setUserAccessToken('')
+    setDiscoveredPages([])
+    setFormData({
+      pageId: '',
+      pageName: '',
+      accessToken: '',
+      niche: '',
+      region: '',
+      language: 'en',
+      timezone: 'America/New_York',
+      dailyPostLimit: 10,
+    })
+  }
+
+  const handleDiscoverPages = async () => {
+    if (!userAccessToken.trim()) {
+      toast({ title: '错误', description: '请先粘贴用户访问口令', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setDiscovering(true)
+      const response = await fetch('/api/pages/discover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAccessToken: userAccessToken.trim() }),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setDiscoveredPages(result.data.pages)
+        toast({ title: '成功', description: `获取到 ${result.data.pages.length} 个主页` })
+      } else {
+        toast({ title: '错误', description: result.error?.message || '获取主页失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '获取主页失败', variant: 'destructive' })
+    } finally {
+      setDiscovering(false)
+    }
+  }
+
+  const handleSelectDiscoveredPage = (page: DiscoveredPage) => {
+    setFormData(current => ({
+      ...current,
+      pageId: page.pageId,
+      pageName: page.pageName,
+      accessToken: page.accessToken,
+      niche: current.niche || page.category || '',
+    }))
+  }
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -340,16 +417,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
         toast({ title: '成功', description: '主页添加成功' })
         onOpenChange(false)
         onSuccess()
-        setFormData({
-          pageId: '',
-          pageName: '',
-          accessToken: '',
-          niche: '',
-          region: '',
-          language: 'en',
-          timezone: 'America/New_York',
-          dailyPostLimit: 10,
-        })
+        resetForm()
       } else {
         toast({
           title: '错误',
@@ -370,11 +438,47 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>添加 Facebook 主页</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2 rounded-lg border p-4">
+            <Label htmlFor="userAccessToken">使用用户访问口令获取主页</Label>
+            <div className="flex gap-2">
+              <Input
+                id="userAccessToken"
+                type="password"
+                placeholder="粘贴 Graph API Explorer 生成的用户访问口令"
+                value={userAccessToken}
+                onChange={(e) => setUserAccessToken(e.target.value)}
+              />
+              <Button type="button" variant="outline" onClick={handleDiscoverPages} disabled={discovering}>
+                {discovering ? '获取中...' : '获取主页'}
+              </Button>
+            </div>
+            {discoveredPages.length > 0 && (
+              <div className="space-y-2">
+                {discoveredPages.map(page => (
+                  <button
+                    key={page.pageId}
+                    type="button"
+                    className="w-full rounded-md border p-3 text-left hover:bg-muted"
+                    onClick={() => handleSelectDiscoveredPage(page)}
+                  >
+                    <div className="font-medium">{page.pageName}</div>
+                    <div className="text-xs text-muted-foreground">ID: {page.pageId}</div>
+                    {page.tasks.length > 0 && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        权限任务：{page.tasks.join(', ')}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="pageId">主页 ID</Label>
             <Input
@@ -457,6 +561,175 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
           
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? '正在添加...' : '添加主页'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+interface EditPageDialogProps {
+  page: FacebookPage | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
+}
+
+function EditPageDialog({ page, open, onOpenChange, onSuccess }: EditPageDialogProps) {
+  const [formData, setFormData] = useState({
+    pageName: '',
+    accessToken: '',
+    niche: '',
+    region: '',
+    language: 'en',
+    timezone: 'America/New_York',
+    dailyPostLimit: 10,
+    status: 'ACTIVE',
+  })
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!page) return
+    setFormData({
+      pageName: page.pageName,
+      accessToken: page.accessToken || '',
+      niche: page.niche || '',
+      region: page.region || '',
+      language: page.language || 'en',
+      timezone: page.timezone || 'America/New_York',
+      dailyPostLimit: page.dailyPostLimit,
+      status: page.status,
+    })
+  }, [page])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!page) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/pages/${page.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({ title: '成功', description: '主页已更新' })
+        onOpenChange(false)
+        onSuccess()
+      } else {
+        toast({
+          title: '错误',
+          description: result.error?.message || '更新主页失败',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({
+        title: '错误',
+        description: '更新主页失败',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>编辑 Facebook 主页</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>主页 ID</Label>
+            <Input value={page?.pageId || ''} disabled />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="editPageName">主页名称</Label>
+            <Input
+              id="editPageName"
+              value={formData.pageName}
+              onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="editAccessToken">Page Access Token</Label>
+            <Input
+              id="editAccessToken"
+              type="password"
+              placeholder="替换为新的主页访问令牌"
+              value={formData.accessToken}
+              onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="editNiche">内容类型</Label>
+              <Input
+                id="editNiche"
+                value={formData.niche}
+                onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editRegion">地区</Label>
+              <Input
+                id="editRegion"
+                value={formData.region}
+                onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="editLanguage">语言</Label>
+              <Input
+                id="editLanguage"
+                value={formData.language}
+                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDailyPostLimit">每日上限</Label>
+              <Input
+                id="editDailyPostLimit"
+                type="number"
+                min="1"
+                max="50"
+                value={formData.dailyPostLimit}
+                onChange={(e) => setFormData({ ...formData, dailyPostLimit: parseInt(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>状态</Label>
+            <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">正常</SelectItem>
+                <SelectItem value="PAUSED">暂停</SelectItem>
+                <SelectItem value="WARNING">预警</SelectItem>
+                <SelectItem value="RESTRICTED">受限</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? '保存中...' : '保存修改'}
           </Button>
         </form>
       </DialogContent>

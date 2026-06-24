@@ -25,6 +25,15 @@ export interface MetaTokenInfo {
   user_id: string
 }
 
+export interface MetaUserPageAccount {
+  id: string
+  name: string
+  access_token: string
+  category?: string
+  tasks?: string[]
+  perms?: string[]
+}
+
 export interface MetaPostInsights {
   data: Array<{
     name: string

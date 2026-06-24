@@ -20,6 +20,11 @@ export async function validatePageToken(pageAccessToken: string) {
   return client.validatePageToken(pageAccessToken)
 }
 
+export async function getUserPages(userAccessToken: string) {
+  const client = getMetaClient()
+  return client.getUserPages(userAccessToken)
+}
+
 export async function publishVideoToPage(
   pageId: string,
   pageAccessToken: string,
@@ -55,6 +60,6 @@ export async function refreshPageData(pageId: string, pageAccessToken: string) {
 }
 
 // 导出类型
-export type { MetaPageInfo, MetaTokenInfo, MetaPostInsights } from './types'
+export type { MetaPageInfo, MetaTokenInfo, MetaPostInsights, MetaUserPageAccount } from './types'
 export { MetaClient } from './client'
 export { MockMetaClient } from './mock'

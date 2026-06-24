@@ -4,6 +4,7 @@ import { MetaAPIError } from '@/lib/errors'
 import {
   MetaPageInfo,
   MetaTokenInfo,
+  MetaUserPageAccount,
   MetaPostInsights,
   MetaPublishVideoResponse,
   MetaAPIResponse,
@@ -56,6 +57,36 @@ export class MetaClient {
         `Failed to validate token: ${error.message}`,
         error.response?.data?.error
       )
+    }
+  }
+
+  // 使用 User Access Token 获取可管理主页及对应 Page Access Token
+  async getUserPages(userAccessToken: string): Promise<MetaUserPageAccount[]> {
+    try {
+      const response: AxiosResponse<MetaAPIResponse<MetaUserPageAccount[]>> =
+        await this.client.get('/me/accounts', {
+          params: {
+            fields: 'id,name,access_token,category,tasks,perms',
+            access_token: userAccessToken,
+          },
+        })
+
+      if (response.data.error) {
+        throw new MetaAPIError(response.data.error.message, response.data.error)
+      }
+
+      return response.data.data || []
+    } catch (error: any) {
+      if (error instanceof MetaAPIError) throw error
+      const metaError = error.response?.data?.error
+      if (metaError) {
+        throw new MetaAPIError(
+          `获取主页列表失败：${metaError.message}`,
+          metaError,
+          error.response?.status || 400
+        )
+      }
+      throw new MetaAPIError(`获取主页列表失败：${error.message}`)
     }
   }
 
