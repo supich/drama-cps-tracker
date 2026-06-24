@@ -62,8 +62,10 @@ export const createBatchPublishSchema = z.object({
   variantIds: z.array(z.string()).default([]),
   videoIds: z.array(z.string()).default([]),
   pageIds: z.array(z.string()).min(1),
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
+  publishMode: z.enum(['NOW', 'SCHEDULED', 'SMART']).default('SMART'),
+  scheduledAt: z.string().datetime().optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
   staggerMin: z.number().int().min(5).max(120).default(15),
   staggerMax: z.number().int().min(15).max(240).default(90),
   publishHoursStart: z.number().int().min(0).max(23).default(8),
@@ -71,6 +73,12 @@ export const createBatchPublishSchema = z.object({
 }).refine(data => data.variantIds.length > 0 || data.videoIds.length > 0, {
   message: 'At least one video or variant is required',
   path: ['variantIds'],
+}).refine(data => data.publishMode !== 'SCHEDULED' || !!data.scheduledAt, {
+  message: '请选择预约发布时间',
+  path: ['scheduledAt'],
+}).refine(data => data.publishMode !== 'SMART' || (!!data.startDate && !!data.endDate), {
+  message: '请选择智能排期的开始日期和结束日期',
+  path: ['startDate'],
 })
 
 // 查询参数验证

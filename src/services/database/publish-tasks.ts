@@ -6,6 +6,8 @@ import { getRandomInterval } from '@/lib/utils'
 import { pageService } from './pages'
 import { variantService } from './variants'
 
+type PublishMode = 'NOW' | 'SCHEDULED' | 'SMART'
+
 export class PublishTaskService {
   // 获取发布任务列表
   async getTasks(options: {
@@ -113,8 +115,10 @@ export class PublishTaskService {
     variantIds?: string[]
     videoIds?: string[]
     pageIds: string[]
-    startDate: Date
-    endDate: Date
+    publishMode?: PublishMode
+    scheduledAt?: Date
+    startDate?: Date
+    endDate?: Date
     staggerMin?: number
     staggerMax?: number
     publishHoursStart?: number
@@ -124,6 +128,8 @@ export class PublishTaskService {
       variantIds = [],
       videoIds = [],
       pageIds,
+      publishMode = 'SMART',
+      scheduledAt,
       startDate,
       endDate,
       staggerMin = RISK_RULES.MIN_STAGGER_INTERVAL,
@@ -137,7 +143,23 @@ export class PublishTaskService {
       throw new ValidationError('At least one video or variant is required')
     }
     if (pageIds.length === 0) throw new ValidationError('At least one page is required')
-    if (startDate >= endDate) throw new ValidationError('Start date must be before end date')
+    if (publishMode === 'SMART' && (!startDate || !endDate)) {
+      throw new ValidationError('Start date and end date are required for smart scheduling')
+    }
+    if (publishMode === 'SMART' && startDate! >= endDate!) throw new ValidationError('Start date must be before end date')
+    if (publishMode === 'SCHEDULED' && !scheduledAt) {
+      throw new ValidationError('Scheduled publish time is required')
+    }
+
+    const fixedPublishTime = publishMode === 'NOW'
+      ? new Date()
+      : publishMode === 'SCHEDULED'
+        ? scheduledAt!
+        : undefined
+    const scheduleRangeStart = publishMode === 'SMART' ? startDate! : fixedPublishTime!
+    const scheduleRangeEnd = publishMode === 'SMART'
+      ? endDate!
+      : new Date(scheduleRangeStart.getTime() + 24 * 60 * 60 * 1000)
 
     const originalVariants = await Promise.all(
       [...new Set(videoIds)].map(videoId => variantService.getOrCreateOriginalVideoVariant(videoId))
@@ -189,8 +211,8 @@ export class PublishTaskService {
         where: {
           pageId: page.id,
           scheduledAt: {
-            gte: startDate,
-            lte: endDate,
+            gte: scheduleRangeStart,
+            lte: scheduleRangeEnd,
           },
           status: { notIn: ['CANCELED', 'FAILED'] },
         },
@@ -221,10 +243,43 @@ export class PublishTaskService {
         errors.push(`Page ${page.pageName}: All variants already published`)
         continue
       }
+
+      if (publishMode !== 'SMART') {
+        let offset = 0
+
+        for (const variant of availableVariants) {
+          const taskScheduledAt = new Date(fixedPublishTime!.getTime() + offset * staggerMin * 60 * 1000)
+          const dayStart = new Date(taskScheduledAt)
+          dayStart.setHours(0, 0, 0, 0)
+          const dayEnd = new Date(taskScheduledAt)
+          dayEnd.setHours(23, 59, 59, 999)
+          const tasksOnDay = pageSchedule[page.id].filter(
+            t => t >= dayStart && t <= dayEnd
+          ).length
+
+          if (tasksOnDay >= page.dailyPostLimit) {
+            errors.push(`Page ${page.pageName}: Daily post limit reached for ${taskScheduledAt.toLocaleDateString()}`)
+            continue
+          }
+
+          tasks.push({
+            pageId: page.id,
+            videoId: variant.videoId,
+            variantId: variant.id,
+            scheduledAt: taskScheduledAt,
+            status: 'PENDING',
+          })
+
+          pageSchedule[page.id].push(taskScheduledAt)
+          offset++
+        }
+
+        continue
+      }
       
       // 计算时间范围内的天数
       const days = Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate!.getTime() - startDate!.getTime()) / (1000 * 60 * 60 * 24)
       )
       
       // 计算每天最多可以发布多少个
@@ -238,7 +293,7 @@ export class PublishTaskService {
         let scheduled = false
         
         for (let day = 0; day < days && !scheduled; day++) {
-          const currentDate = new Date(startDate)
+          const currentDate = new Date(startDate!)
           currentDate.setDate(currentDate.getDate() + day)
           
           // 检查当天已安排的任务数量

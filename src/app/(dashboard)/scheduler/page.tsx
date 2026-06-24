@@ -23,7 +23,22 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Calendar, Plus, ChevronLeft, ChevronRight, Clock, Facebook, Video } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Clock, Facebook, Video } from 'lucide-react'
+
+type PublishMode = 'NOW' | 'SCHEDULED' | 'SMART'
+
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatLocalDateTimeInput = (date: Date) => {
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${formatLocalDate(date)}T${hours}:${minutes}`
+}
 
 interface Variant {
   id: string
@@ -70,6 +85,8 @@ export default function SchedulerPage() {
   const [selectedVariants, setSelectedVariants] = useState<string[]>([])
   const [selectedVideos, setSelectedVideos] = useState<string[]>([])
   const [selectedPages, setSelectedPages] = useState<string[]>([])
+  const [publishMode, setPublishMode] = useState<PublishMode>('SCHEDULED')
+  const [scheduledAt, setScheduledAt] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [staggerMin, setStaggerMin] = useState(15)
@@ -92,8 +109,11 @@ export default function SchedulerPage() {
     // 设置默认日期范围为未来7天
     const nextWeek = new Date(today)
     nextWeek.setDate(today.getDate() + 7)
-    setStartDate(today.toISOString().split('T')[0])
-    setEndDate(nextWeek.toISOString().split('T')[0])
+    const tenMinutesLater = new Date(today)
+    tenMinutesLater.setMinutes(today.getMinutes() + 10)
+    setScheduledAt(formatLocalDateTimeInput(tenMinutesLater))
+    setStartDate(formatLocalDate(today))
+    setEndDate(formatLocalDate(nextWeek))
 
     const params = new URLSearchParams(window.location.search)
     const videoId = params.get('videoId')
@@ -149,30 +169,50 @@ export default function SchedulerPage() {
       toast({ title: '错误', description: '请至少选择一个主页', variant: 'destructive' })
       return
     }
+    if (publishMode === 'SCHEDULED' && !scheduledAt) {
+      toast({ title: '错误', description: '请选择预约发布时间', variant: 'destructive' })
+      return
+    }
+    if (publishMode === 'SMART' && (!startDate || !endDate)) {
+      toast({ title: '错误', description: '请选择智能排期的开始日期和结束日期', variant: 'destructive' })
+      return
+    }
 
     try {
+      const body: Record<string, unknown> = {
+        variantIds: selectedVariants,
+        videoIds: selectedVideos,
+        pageIds: selectedPages,
+        publishMode,
+        staggerMin,
+        staggerMax,
+        publishHoursStart,
+        publishHoursEnd,
+      }
+
+      if (publishMode === 'SCHEDULED') {
+        body.scheduledAt = new Date(scheduledAt).toISOString()
+      }
+      if (publishMode === 'SMART') {
+        body.startDate = new Date(startDate).toISOString()
+        body.endDate = new Date(endDate).toISOString()
+      }
+
       const response = await fetch('/api/publish-tasks/batch-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variantIds: selectedVariants,
-          videoIds: selectedVideos,
-          pageIds: selectedPages,
-          startDate: new Date(startDate).toISOString(),
-          endDate: new Date(endDate).toISOString(),
-          staggerMin,
-          staggerMax,
-          publishHoursStart,
-          publishHoursEnd,
-        }),
+        body: JSON.stringify(body),
       })
 
       const result = await response.json()
 
       if (result.success) {
+        const firstTaskTime = result.data.tasks?.[0]?.scheduledAt
         toast({
           title: '成功',
-          description: `已创建 ${result.data.created} 个发布任务`,
+          description: firstTaskTime
+            ? `已创建 ${result.data.created} 个发布任务，首条发布时间：${formatDateTime(firstTaskTime)}`
+            : `已创建 ${result.data.created} 个发布任务`,
         })
         setIsDialogOpen(false)
         fetchData()
@@ -363,30 +403,115 @@ export default function SchedulerPage() {
                 </div>
               </div>
 
-              {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>开始日期</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>结束日期</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>发布方式</Label>
+                <Select value={publishMode} onValueChange={(value) => setPublishMode(value as PublishMode)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NOW">立即发布</SelectItem>
+                    <SelectItem value="SCHEDULED">指定时间发布</SelectItem>
+                    <SelectItem value="SMART">智能区间排期</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Stagger Settings */}
-              <div className="grid grid-cols-2 gap-4">
+              {publishMode === 'NOW' && (
+                <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+                  任务创建后会立即进入发布队列。选择多个素材或主页时，同一主页下的多条任务会按最小间隔顺延，避免同时发布。
+                </div>
+              )}
+
+              {publishMode === 'SCHEDULED' && (
                 <div className="space-y-2">
-                  <Label>最小间隔（分钟）</Label>
+                  <Label>预约发布时间</Label>
+                  <Input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    首条任务会在该时间发布；同一主页的多条素材会按最小间隔顺延。
+                  </p>
+                </div>
+              )}
+
+              {publishMode === 'SMART' && (
+                <>
+                  {/* Date Range */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>开始日期</Label>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>结束日期</Label>
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Stagger Settings */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>最小间隔（分钟）</Label>
+                      <Input
+                        type="number"
+                        value={staggerMin}
+                        onChange={(e) => setStaggerMin(parseInt(e.target.value))}
+                        min={5}
+                        max={120}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>最大间隔（分钟）</Label>
+                      <Input
+                        type="number"
+                        value={staggerMax}
+                        onChange={(e) => setStaggerMax(parseInt(e.target.value))}
+                        min={15}
+                        max={240}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Publish Hours */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>发布开始时段</Label>
+                      <Input
+                        type="number"
+                        value={publishHoursStart}
+                        onChange={(e) => setPublishHoursStart(parseInt(e.target.value))}
+                        min={0}
+                        max={23}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>发布结束时段</Label>
+                      <Input
+                        type="number"
+                        value={publishHoursEnd}
+                        onChange={(e) => setPublishHoursEnd(parseInt(e.target.value))}
+                        min={0}
+                        max={23}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {publishMode !== 'SMART' && (
+                <div className="space-y-2">
+                  <Label>同主页多任务间隔（分钟）</Label>
                   <Input
                     type="number"
                     value={staggerMin}
@@ -395,44 +520,10 @@ export default function SchedulerPage() {
                     max={120}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>最大间隔（分钟）</Label>
-                  <Input
-                    type="number"
-                    value={staggerMax}
-                    onChange={(e) => setStaggerMax(parseInt(e.target.value))}
-                    min={15}
-                    max={240}
-                  />
-                </div>
-              </div>
-
-              {/* Publish Hours */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>发布开始时段</Label>
-                  <Input
-                    type="number"
-                    value={publishHoursStart}
-                    onChange={(e) => setPublishHoursStart(parseInt(e.target.value))}
-                    min={0}
-                    max={23}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>发布结束时段</Label>
-                  <Input
-                    type="number"
-                    value={publishHoursEnd}
-                    onChange={(e) => setPublishHoursEnd(parseInt(e.target.value))}
-                    min={0}
-                    max={23}
-                  />
-                </div>
-              </div>
+              )}
 
               <Button onClick={handleCreateBatchTasks} className="w-full">
-                创建任务
+                {publishMode === 'NOW' ? '立即发布' : publishMode === 'SCHEDULED' ? '预约发布' : '创建排期任务'}
               </Button>
             </div>
           </DialogContent>
@@ -465,7 +556,7 @@ export default function SchedulerPage() {
       ) : (
         <div className="grid grid-cols-7 gap-2">
           {/* Day Headers */}
-          {dayNames.map((day, index) => (
+          {dayNames.map((day) => (
             <div
               key={day}
               className="text-center text-sm font-medium text-muted-foreground py-2"
@@ -494,8 +585,10 @@ export default function SchedulerPage() {
                     <div
                       key={task.id}
                       className="p-1 rounded text-xs bg-muted truncate"
+                      title={`${task.video.title} / ${task.variant.variantName} / ${formatDateTime(task.scheduledAt)}`}
                     >
-                      <div className="font-medium">{task.variant.variantName}</div>
+                      <div className="font-medium truncate">{task.video.title}</div>
+                      <div className="truncate text-muted-foreground">{task.variant.variantName}</div>
                       <div className="text-muted-foreground">
                         {new Date(task.scheduledAt).toLocaleTimeString('zh-CN', {
                           hour: '2-digit',
@@ -525,13 +618,17 @@ export default function SchedulerPage() {
           <div className="space-y-2">
             {tasks
               .filter(t => t.status === 'PENDING')
+              .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
               .slice(0, 10)
               .map(task => (
                 <div key={task.id} className="flex items-center justify-between p-2 border rounded">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Video className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{task.variant.variantName}</span>
+                      <div>
+                        <div className="text-sm font-medium">{task.video.title}</div>
+                        <div className="text-xs text-muted-foreground">{task.variant.variantName}</div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Facebook className="h-4 w-4 text-muted-foreground" />
