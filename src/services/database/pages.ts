@@ -105,19 +105,24 @@ export class PageService {
     // 检查Page ID是否已存在
     const existingPage = await this.getPageByPageId(data.pageId)
     if (existingPage) {
-      if (existingPage.status !== 'BANNED') {
-        throw new ConflictError(`主页 ${data.pageName || data.pageId} 已存在`)
-      }
-
       const pageMetadata = await this.preparePageMetadata(data.pageId, data.accessToken)
+      const reactivated = existingPage.status === 'BANNED'
 
       return prisma.facebookPage.update({
         where: { id: existingPage.id },
         data: {
-          ...data,
+          pageName: data.pageName,
+          accessToken: data.accessToken,
           ...pageMetadata,
-          status: 'ACTIVE',
-          todayPostCount: 0,
+          status: existingPage.status === 'BANNED' || existingPage.status === 'WARNING'
+            ? 'ACTIVE'
+            : existingPage.status,
+          niche: data.niche || existingPage.niche,
+          region: data.region || existingPage.region,
+          language: data.language || existingPage.language,
+          timezone: data.timezone || existingPage.timezone,
+          tags: data.tags || existingPage.tags,
+          todayPostCount: reactivated ? 0 : existingPage.todayPostCount,
           consecutiveFailures: 0,
           healthScore: Math.max(existingPage.healthScore, 90),
           dailyPostLimit: data.dailyPostLimit || existingPage.dailyPostLimit || RISK_RULES.DEFAULT_DAILY_POST_LIMIT,

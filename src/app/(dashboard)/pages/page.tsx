@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatNumber, getStatusColor, getHealthScoreColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { Facebook, Pencil, Plus, Search, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
@@ -333,6 +334,7 @@ export default function PagesPage() {
       <AddPageDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+        existingPages={pages}
         onSuccess={fetchPages}
       />
       <EditPageDialog
@@ -358,13 +360,15 @@ interface DiscoveredPage {
 interface AddPageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  existingPages: FacebookPage[]
   onSuccess: () => void
 }
 
-function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
+function AddPageDialog({ open, onOpenChange, existingPages, onSuccess }: AddPageDialogProps) {
   const [userAccessToken, setUserAccessToken] = useState('')
   const [discovering, setDiscovering] = useState(false)
   const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([])
+  const [selectedPageIds, setSelectedPageIds] = useState<string[]>([])
   const [formData, setFormData] = useState({
     pageId: '',
     pageName: '',
@@ -376,11 +380,14 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
     dailyPostLimit: 10,
   })
   const [loading, setLoading] = useState(false)
+  const [batchLoading, setBatchLoading] = useState(false)
   const { toast } = useToast()
+  const existingPageIds = new Set(existingPages.map(page => page.pageId))
 
   const resetForm = () => {
     setUserAccessToken('')
     setDiscoveredPages([])
+    setSelectedPageIds([])
     setFormData({
       pageId: '',
       pageName: '',
@@ -410,6 +417,7 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
 
       if (result.success) {
         setDiscoveredPages(result.data.pages)
+        setSelectedPageIds(result.data.pages.map((page: DiscoveredPage) => page.pageId))
         toast({ title: '成功', description: `获取到 ${result.data.pages.length} 个主页` })
       } else {
         toast({ title: '错误', description: result.error?.message || '获取主页失败', variant: 'destructive' })
@@ -430,6 +438,79 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
       niche: current.niche || page.category || '',
     }))
   }
+
+  const toggleSelectedPage = (pageId: string, checked: boolean | string) => {
+    setSelectedPageIds(current => {
+      if (checked) return current.includes(pageId) ? current : [...current, pageId]
+      return current.filter(id => id !== pageId)
+    })
+  }
+
+  const buildPagePayload = (page: DiscoveredPage) => ({
+    pageId: page.pageId,
+    pageName: page.pageName,
+    accessToken: page.accessToken,
+    niche: page.category || '',
+    region: formData.region,
+    language: formData.language,
+    timezone: formData.timezone,
+    dailyPostLimit: formData.dailyPostLimit,
+  })
+
+  const handleBatchSubmit = async () => {
+    const selectedPages = discoveredPages.filter(page => selectedPageIds.includes(page.pageId))
+    if (selectedPages.length === 0) {
+      toast({ title: '错误', description: '请至少选择一个主页', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setBatchLoading(true)
+      const results = await Promise.all(selectedPages.map(async page => {
+        const response = await fetch('/api/pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPagePayload(page)),
+        })
+        const result = await response.json()
+        return {
+          page,
+          ok: result.success,
+          error: result.error?.message,
+          existed: existingPageIds.has(page.pageId),
+        }
+      }))
+
+      const successCount = results.filter(result => result.ok).length
+      const updateCount = results.filter(result => result.ok && result.existed).length
+      const addCount = successCount - updateCount
+      const failures = results.filter(result => !result.ok)
+
+      if (successCount > 0) {
+        toast({
+          title: failures.length > 0 ? '部分完成' : '成功',
+          description: `新增 ${addCount} 个主页，更新 ${updateCount} 个主页 Token${failures.length ? `，失败 ${failures.length} 个` : ''}`,
+          variant: failures.length > 0 ? 'destructive' : undefined,
+        })
+        onSuccess()
+      }
+
+      if (failures.length === 0) {
+        onOpenChange(false)
+        resetForm()
+      } else if (successCount === 0) {
+        toast({
+          title: '批量处理失败',
+          description: failures.slice(0, 3).map(item => `${item.page.pageName}: ${item.error || '未知错误'}`).join('；'),
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({ title: '错误', description: '批量添加或更新主页失败', variant: 'destructive' })
+    } finally {
+      setBatchLoading(false)
+    }
+  }
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -445,7 +526,10 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
       const result = await response.json()
       
       if (result.success) {
-        toast({ title: '成功', description: '主页添加成功' })
+        toast({
+          title: '成功',
+          description: existingPageIds.has(formData.pageId) ? '主页 Token 已更新' : '主页添加成功',
+        })
         onOpenChange(false)
         onSuccess()
         resetForm()
@@ -490,22 +574,67 @@ function AddPageDialog({ open, onOpenChange, onSuccess }: AddPageDialogProps) {
             </div>
             {discoveredPages.length > 0 && (
               <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    已选择 {selectedPageIds.length}/{discoveredPages.length} 个主页
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedPageIds(discoveredPages.map(page => page.pageId))}
+                    >
+                      全选
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedPageIds([])}
+                    >
+                      清空
+                    </Button>
+                  </div>
+                </div>
                 {discoveredPages.map(page => (
-                  <button
+                  <div
                     key={page.pageId}
-                    type="button"
-                    className="w-full rounded-md border p-3 text-left hover:bg-muted"
-                    onClick={() => handleSelectDiscoveredPage(page)}
+                    className="flex gap-3 rounded-md border p-3 hover:bg-muted"
                   >
-                    <div className="font-medium">{page.pageName}</div>
-                    <div className="text-xs text-muted-foreground">ID: {page.pageId}</div>
-                    {page.tasks.length > 0 && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        权限任务：{page.tasks.join(', ')}
+                    <Checkbox
+                      checked={selectedPageIds.includes(page.pageId)}
+                      onCheckedChange={(checked) => toggleSelectedPage(page.pageId, checked)}
+                      className="mt-1"
+                    />
+                    <button
+                      type="button"
+                      className="flex-1 text-left"
+                      onClick={() => handleSelectDiscoveredPage(page)}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{page.pageName}</span>
+                        {existingPageIds.has(page.pageId) && (
+                          <Badge variant="outline">已存在，将更新Token</Badge>
+                        )}
                       </div>
-                    )}
-                  </button>
+                      <div className="text-xs text-muted-foreground">ID: {page.pageId}</div>
+                      {page.tasks.length > 0 && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          权限任务：{page.tasks.join(', ')}
+                        </div>
+                      )}
+                    </button>
+                  </div>
                 ))}
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handleBatchSubmit}
+                  disabled={batchLoading || selectedPageIds.length === 0}
+                >
+                  {batchLoading ? '处理中...' : `批量添加/更新 ${selectedPageIds.length} 个主页`}
+                </Button>
               </div>
             )}
           </div>
