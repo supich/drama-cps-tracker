@@ -8,7 +8,7 @@ import { settingsService } from '@/services/database/settings'
 const updateSettingsSchema = z.object({
   settings: z.array(z.object({
     key: z.string(),
-    value: z.string().min(1),
+    value: z.string(),
   })),
 })
 

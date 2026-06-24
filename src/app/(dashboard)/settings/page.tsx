@@ -24,7 +24,14 @@ const defaultSettings: SystemSetting[] = [
   { key: 'HEALTH_SCORE_THRESHOLD', value: '60', description: '继续发布所需最低健康分' },
   { key: 'INSIGHTS_SYNC_INTERVAL', value: '30', description: '数据同步间隔（分钟）' },
   { key: 'HEALTH_CHECK_INTERVAL', value: '60', description: '健康检查间隔（分钟）' },
+  { key: 'META_APP_ID', value: '', description: 'Meta App ID' },
+  { key: 'META_APP_SECRET', value: '', description: 'Meta App Secret' },
 ]
+
+const publishingSettingKeys = ['DAILY_POST_LIMIT', 'MIN_STAGGER_INTERVAL', 'MAX_STAGGER_INTERVAL']
+const riskSettingKeys = ['MAX_RETRY_COUNT', 'CONSECUTIVE_FAIL_THRESHOLD', 'HEALTH_SCORE_THRESHOLD']
+const syncSettingKeys = ['INSIGHTS_SYNC_INTERVAL', 'HEALTH_CHECK_INTERVAL']
+const metaSettingKeys = ['META_APP_ID', 'META_APP_SECRET']
 
 interface EnvInfo {
   NODE_ENV: string
@@ -72,6 +79,12 @@ export default function SettingsPage() {
 
   const handleSettingChange = (key: string, value: string) => {
     setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s))
+  }
+
+  const getSettingsByKeys = (keys: string[]) => {
+    return keys
+      .map(key => settings.find(setting => setting.key === key))
+      .filter(Boolean) as SystemSetting[]
   }
 
   const handleSaveSettings = async () => {
@@ -154,7 +167,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             {loading ? (
               <p className="text-sm text-muted-foreground">加载中...</p>
-            ) : settings.slice(0, 3).map((setting) => (
+            ) : getSettingsByKeys(publishingSettingKeys).map((setting) => (
               <div key={setting.key} className="space-y-2">
                 <Label htmlFor={setting.key}>{setting.description}</Label>
                 <Input
@@ -178,7 +191,7 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {settings.slice(3, 6).map((setting) => (
+            {getSettingsByKeys(riskSettingKeys).map((setting) => (
               <div key={setting.key} className="space-y-2">
                 <Label htmlFor={setting.key}>{setting.description}</Label>
                 <Input
@@ -202,7 +215,7 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {settings.slice(6).map((setting) => (
+            {getSettingsByKeys(syncSettingKeys).map((setting) => (
               <div key={setting.key} className="space-y-2">
                 <Label htmlFor={setting.key}>{setting.description}</Label>
                 <Input
@@ -214,6 +227,33 @@ export default function SettingsPage() {
                 />
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Meta App Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Meta 应用配置
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {getSettingsByKeys(metaSettingKeys).map((setting) => (
+              <div key={setting.key} className="space-y-2">
+                <Label htmlFor={setting.key}>{setting.description}</Label>
+                <Input
+                  id={setting.key}
+                  type={setting.key === 'META_APP_SECRET' ? 'password' : 'text'}
+                  value={setting.value}
+                  onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                  placeholder={setting.key === 'META_APP_ID' ? '输入 Meta App ID' : '输入 Meta App Secret'}
+                />
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              用于验证 Token 和将短期用户口令转换为长期口令。保存后立即对后续操作生效。
+            </p>
           </CardContent>
         </Card>
 

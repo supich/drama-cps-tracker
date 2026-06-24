@@ -16,6 +16,8 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettingDefinition[] = [
   { key: 'HEALTH_SCORE_THRESHOLD', value: String(RISK_RULES.HEALTH_SCORE_THRESHOLD), description: '继续发布所需最低健康分' },
   { key: 'INSIGHTS_SYNC_INTERVAL', value: '30', description: '数据同步间隔（分钟）' },
   { key: 'HEALTH_CHECK_INTERVAL', value: '60', description: '健康检查间隔（分钟）' },
+  { key: 'META_APP_ID', value: process.env.META_APP_ID || '', description: 'Meta App ID' },
+  { key: 'META_APP_SECRET', value: process.env.META_APP_SECRET || '', description: 'Meta App Secret' },
 ]
 
 const DEFAULT_SETTING_MAP = new Map(DEFAULT_SYSTEM_SETTINGS.map(setting => [setting.key, setting]))
@@ -82,6 +84,16 @@ export class SettingsService {
       CONSECUTIVE_FAIL_THRESHOLD: parsePositiveInt(values.get('CONSECUTIVE_FAIL_THRESHOLD'), RISK_RULES.CONSECUTIVE_FAIL_THRESHOLD),
       HEALTH_SCORE_THRESHOLD: parsePositiveInt(values.get('HEALTH_SCORE_THRESHOLD'), RISK_RULES.HEALTH_SCORE_THRESHOLD),
       HEALTH_SCORE: RISK_RULES.HEALTH_SCORE,
+    }
+  }
+
+  async getMetaAppCredentials() {
+    const settings = await this.getSettings()
+    const values = new Map(settings.map(setting => [setting.key, setting.value]))
+
+    return {
+      appId: values.get('META_APP_ID') || process.env.META_APP_ID || '',
+      appSecret: values.get('META_APP_SECRET') || process.env.META_APP_SECRET || '',
     }
   }
 }

@@ -2,13 +2,15 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
 import { successResponse } from '@/lib/errors'
+import { settingsService } from '@/services/database/settings'
 
 // GET /api/system/env - 获取环境变量状态（不暴露敏感值）
 export async function GET() {
+  const metaCredentials = await settingsService.getMetaAppCredentials()
   const env = {
     NODE_ENV: process.env.NODE_ENV || 'unknown',
-    META_APP_ID: process.env.META_APP_ID ? 'configured' : 'not set',
-    META_APP_SECRET: process.env.META_APP_SECRET ? 'configured' : 'not set',
+    META_APP_ID: metaCredentials.appId ? 'configured' : 'not set',
+    META_APP_SECRET: metaCredentials.appSecret ? 'configured' : 'not set',
     USE_META_MOCK: process.env.USE_META_MOCK || 'false',
     DATABASE_URL: process.env.DATABASE_URL
       ? process.env.DATABASE_URL.replace(/:[^:@]+@/, ':***@').replace(/\/\/[^:]+:[^@]+@/, '//***:***@').substring(0, 40) + '...'

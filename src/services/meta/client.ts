@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { META_API } from '@/lib/constants'
 import { MetaAPIError } from '@/lib/errors'
+import { settingsService } from '@/services/database/settings'
 import {
   MetaPageInfo,
   MetaTokenInfo,
@@ -26,7 +27,9 @@ export class MetaClient {
   // 将短期 User Access Token 交换为长期 User Access Token
   async exchangeUserAccessToken(userAccessToken: string): Promise<MetaLongLivedTokenResponse> {
     try {
-      if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
+      const credentials = await settingsService.getMetaAppCredentials()
+
+      if (!credentials.appId || !credentials.appSecret) {
         throw new MetaAPIError('缺少 META_APP_ID 或 META_APP_SECRET，无法转换长期用户口令')
       }
 
@@ -34,8 +37,8 @@ export class MetaClient {
         await this.client.get('/oauth/access_token', {
           params: {
             grant_type: 'fb_exchange_token',
-            client_id: process.env.META_APP_ID,
-            client_secret: process.env.META_APP_SECRET,
+            client_id: credentials.appId,
+            client_secret: credentials.appSecret,
             fb_exchange_token: userAccessToken,
           },
         })
@@ -110,7 +113,9 @@ export class MetaClient {
   // 验证 Page Access Token
   async validatePageToken(accessToken: string): Promise<MetaTokenInfo> {
     try {
-      if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
+      const credentials = await settingsService.getMetaAppCredentials()
+
+      if (!credentials.appId || !credentials.appSecret) {
         const subject = await this.getAccessTokenSubject(accessToken)
 
         return {
@@ -130,7 +135,7 @@ export class MetaClient {
         {
           params: {
             input_token: accessToken,
-            access_token: `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`,
+            access_token: `${credentials.appId}|${credentials.appSecret}`,
           },
         }
       )
