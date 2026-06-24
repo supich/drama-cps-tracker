@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { getStatusColor } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { ListTodo, RefreshCw, XCircle, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ListTodo, RefreshCw, XCircle, RotateCcw, ChevronLeft, ChevronRight, Trash2, Send } from 'lucide-react'
 
 interface PublishTask {
   id: string
@@ -88,6 +88,44 @@ export default function TasksPage() {
         fetchTasks()
       } else {
         toast({ title: '错误', description: result.error?.message || '取消失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '操作失败', variant: 'destructive' })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handlePublishNow = async (taskId: string) => {
+    try {
+      setActionLoading(taskId)
+      const response = await fetch(`/api/publish-tasks/${taskId}/publish-now`, { method: 'PATCH' })
+      const result = await response.json()
+      if (result.success) {
+        toast({ title: '成功', description: '任务已加入立即发布队列' })
+        fetchTasks()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '立即发布失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '操作失败', variant: 'destructive' })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDelete = async (taskId: string) => {
+    if (!confirm('确定要删除这个发布任务吗？此操作不可撤销。')) return
+
+    try {
+      setActionLoading(taskId)
+      const response = await fetch(`/api/publish-tasks/${taskId}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (result.success) {
+        toast({ title: '成功', description: '任务已删除' })
+        fetchTasks()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '删除失败', variant: 'destructive' })
       }
     } catch {
       toast({ title: '错误', description: '操作失败', variant: 'destructive' })
@@ -217,16 +255,28 @@ export default function TasksPage() {
                         <td className="py-3 px-2">
                           <div className="flex gap-1">
                             {task.status === 'PENDING' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2 text-xs"
-                                disabled={actionLoading === task.id}
-                                onClick={() => handleCancel(task.id)}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                取消
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  disabled={actionLoading === task.id}
+                                  onClick={() => handlePublishNow(task.id)}
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  立即发布
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  disabled={actionLoading === task.id}
+                                  onClick={() => handleCancel(task.id)}
+                                >
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  取消
+                                </Button>
+                              </>
                             )}
                             {task.status === 'FAILED' && (
                               <Button
@@ -238,6 +288,18 @@ export default function TasksPage() {
                               >
                                 <RotateCcw className="h-3 w-3 mr-1" />
                                 重试
+                              </Button>
+                            )}
+                            {task.status !== 'PROCESSING' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                                disabled={actionLoading === task.id}
+                                onClick={() => handleDelete(task.id)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                删除
                               </Button>
                             )}
                           </div>

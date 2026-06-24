@@ -5,15 +5,15 @@ import { publishTaskService } from '@/services/database/publish-tasks'
 import { handleApiError, successResponse } from '@/lib/errors'
 import { removePublishJob } from '@/services/queue'
 
-// PATCH /api/publish-tasks/:id/cancel - 取消发布任务
-export async function PATCH(
-  request: NextRequest,
+// DELETE /api/publish-tasks/:id - 删除发布任务
+export async function DELETE(
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await removePublishJob(params.id)
-    const task = await publishTaskService.cancelTask(params.id)
-    return NextResponse.json(successResponse(task))
+    await publishTaskService.deleteTask(params.id)
+    return NextResponse.json(successResponse({ deleted: true }))
   } catch (error) {
     const errorResponse = handleApiError(error)
     return NextResponse.json(errorResponse, { status: errorResponse.statusCode })

@@ -2,7 +2,6 @@ import prisma from '@/lib/prisma'
 import { TaskStatus, Prisma } from '@prisma/client'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors'
 import { RISK_RULES } from '@/lib/constants'
-import { getRandomInterval } from '@/lib/utils'
 import { pageService } from './pages'
 import { variantService } from './variants'
 
@@ -229,7 +228,7 @@ export class PublishTaskService {
         where: {
           pageId: page.id,
           variantId: { in: publishVariantIds },
-          status: { notIn: ['CANCELED'] },
+          status: { in: ['PROCESSING', 'PUBLISHED'] },
         },
         select: { variantId: true },
       }).then(tasks => tasks.map(t => t.variantId))
@@ -438,6 +437,40 @@ export class PublishTaskService {
     return prisma.publishTask.update({
       where: { id },
       data: { status: 'CANCELED' },
+    })
+  }
+
+  // 将待发布任务改成立即发布
+  async publishTaskNow(id: string) {
+    const task = await this.getTaskById(id)
+
+    if (task.status !== 'PENDING') {
+      throw new ConflictError('Only pending tasks can be published immediately')
+    }
+
+    return prisma.publishTask.update({
+      where: { id },
+      data: {
+        scheduledAt: new Date(),
+      },
+    })
+  }
+
+  // 删除任务。已发布任务保留业务数据关系，清理时先解除统计日志的任务引用。
+  async deleteTask(id: string) {
+    const task = await this.getTaskById(id)
+
+    if (task.status === 'PROCESSING') {
+      throw new ConflictError('Cannot delete a task while it is processing')
+    }
+
+    await prisma.performanceLog.updateMany({
+      where: { publishTaskId: id },
+      data: { publishTaskId: null },
+    })
+
+    return prisma.publishTask.delete({
+      where: { id },
     })
   }
 

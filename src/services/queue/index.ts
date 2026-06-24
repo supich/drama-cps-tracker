@@ -115,6 +115,14 @@ export async function addPublishJob(data: {
   })
 }
 
+// 移除指定发布任务的队列 Job，用于删除任务或改成立即发布前清理旧延迟任务
+export async function removePublishJob(taskId: string) {
+  const job = await getPublishQueue().getJob(`publish-${taskId}`)
+  if (job) {
+    await job.remove()
+  }
+}
+
 // 添加数据同步任务
 export async function addInsightsJob(data: {
   postId: string

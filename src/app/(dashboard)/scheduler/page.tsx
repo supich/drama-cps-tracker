@@ -207,6 +207,15 @@ export default function SchedulerPage() {
       const result = await response.json()
 
       if (result.success) {
+        if (result.data.created === 0) {
+          toast({
+            title: '未创建任务',
+            description: result.data.errors?.join('；') || '没有可创建的发布任务，请检查素材是否已发布或主页是否可用。',
+            variant: 'destructive',
+          })
+          return
+        }
+
         const firstTaskTime = result.data.tasks?.[0]?.scheduledAt
         toast({
           title: '成功',
