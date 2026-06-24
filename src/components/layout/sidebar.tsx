@@ -13,6 +13,7 @@ import {
   BarChart3,
   MousePointerClick,
   Settings,
+  BookOpen,
 } from 'lucide-react'
 
 const menuItems = [
@@ -25,6 +26,11 @@ const menuItems = [
     title: 'Facebook 主页',
     href: '/pages',
     icon: Facebook,
+  },
+  {
+    title: '剧集管理',
+    href: '/dramas',
+    icon: BookOpen,
   },
   {
     title: '视频管理',
