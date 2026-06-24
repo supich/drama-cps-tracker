@@ -52,13 +52,15 @@ export const createVariantSchema = z.object({
   hookType: z.string().optional(),
   ctaType: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
+  status: z.enum(['DRAFT', 'READY', 'PUBLISHED', 'ARCHIVED']).default('DRAFT'),
 })
 
 export const updateVariantSchema = createVariantSchema.partial()
 
 // Publish Task 验证
 export const createBatchPublishSchema = z.object({
-  variantIds: z.array(z.string()).min(1),
+  variantIds: z.array(z.string()).default([]),
+  videoIds: z.array(z.string()).default([]),
   pageIds: z.array(z.string()).min(1),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
@@ -66,6 +68,9 @@ export const createBatchPublishSchema = z.object({
   staggerMax: z.number().int().min(15).max(240).default(90),
   publishHoursStart: z.number().int().min(0).max(23).default(8),
   publishHoursEnd: z.number().int().min(0).max(23).default(22),
+}).refine(data => data.variantIds.length > 0 || data.videoIds.length > 0, {
+  message: 'At least one video or variant is required',
+  path: ['variantIds'],
 })
 
 // 查询参数验证

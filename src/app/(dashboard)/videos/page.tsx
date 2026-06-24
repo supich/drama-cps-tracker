@@ -21,7 +21,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Video, Plus, Search, Play, Clock } from 'lucide-react'
+import { CalendarPlus, Video, Plus, Search, Play, Clock } from 'lucide-react'
+import Link from 'next/link'
 
 interface VideoData {
   id: string
@@ -377,9 +378,17 @@ export default function VideosPage() {
                   {formatDate(video.createdAt)}
                 </div>
                 
-                <Button variant="outline" size="sm" className="w-full">
-                  查看详情
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm">
+                    查看详情
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link href={`/scheduler?videoId=${video.id}`}>
+                      <CalendarPlus className="mr-2 h-4 w-4" />
+                      发布
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

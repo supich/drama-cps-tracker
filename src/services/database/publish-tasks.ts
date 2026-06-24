@@ -4,6 +4,7 @@ import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors'
 import { RISK_RULES } from '@/lib/constants'
 import { getRandomInterval } from '@/lib/utils'
 import { pageService } from './pages'
+import { variantService } from './variants'
 
 export class PublishTaskService {
   // 获取发布任务列表
@@ -109,7 +110,8 @@ export class PublishTaskService {
 
   // 批量创建发布任务（核心排期算法）
   async createBatchTasks(params: {
-    variantIds: string[]
+    variantIds?: string[]
+    videoIds?: string[]
     pageIds: string[]
     startDate: Date
     endDate: Date
@@ -119,7 +121,8 @@ export class PublishTaskService {
     publishHoursEnd?: number
   }) {
     const {
-      variantIds,
+      variantIds = [],
+      videoIds = [],
       pageIds,
       startDate,
       endDate,
@@ -130,14 +133,26 @@ export class PublishTaskService {
     } = params
     
     // 验证参数
-    if (variantIds.length === 0) throw new ValidationError('At least one variant is required')
+    if (variantIds.length === 0 && videoIds.length === 0) {
+      throw new ValidationError('At least one video or variant is required')
+    }
     if (pageIds.length === 0) throw new ValidationError('At least one page is required')
     if (startDate >= endDate) throw new ValidationError('Start date must be before end date')
+
+    const originalVariants = await Promise.all(
+      [...new Set(videoIds)].map(videoId => variantService.getOrCreateOriginalVideoVariant(videoId))
+    )
+    const publishVariantIds = [
+      ...new Set([
+        ...variantIds,
+        ...originalVariants.map(variant => variant.id),
+      ]),
+    ]
     
     // 获取所有变体信息
     const variants = await prisma.videoVariant.findMany({
       where: {
-        id: { in: variantIds },
+        id: { in: publishVariantIds },
         status: 'READY',
       },
       include: {
@@ -191,7 +206,7 @@ export class PublishTaskService {
       const publishedVariantIds = await prisma.publishTask.findMany({
         where: {
           pageId: page.id,
-          variantId: { in: variantIds },
+          variantId: { in: publishVariantIds },
           status: { notIn: ['CANCELED'] },
         },
         select: { variantId: true },
@@ -278,15 +293,33 @@ export class PublishTaskService {
     
     // 批量创建任务
     let created = 0
+    let createdTasks: Array<{
+      id: string
+      pageId: string
+      videoId: string
+      variantId: string
+      scheduledAt: Date
+    }> = []
+
     if (tasks.length > 0) {
-      const result = await prisma.publishTask.createMany({
-        data: tasks,
-      })
-      created = result.count
+      createdTasks = await prisma.$transaction(
+        tasks.map(task => prisma.publishTask.create({
+          data: task,
+          select: {
+            id: true,
+            pageId: true,
+            videoId: true,
+            variantId: true,
+            scheduledAt: true,
+          },
+        }))
+      )
+      created = createdTasks.length
     }
     
     return {
       created,
+      tasks: createdTasks,
       errors,
       total: variants.length * pages.length,
     }

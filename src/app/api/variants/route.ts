@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { variantService } from '@/services/database/variants'
-import { paginationSchema } from '@/lib/validations'
+import { createVariantSchema, paginationSchema } from '@/lib/validations'
 import { handleApiError, successResponse } from '@/lib/errors'
 import { VariantStatus } from '@prisma/client'
 
@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const variant = await variantService.createVariant(body)
+    const validatedData = createVariantSchema.parse(body)
+    const variant = await variantService.createVariant(validatedData)
     return NextResponse.json(successResponse(variant, 201))
   } catch (error) {
     const errorResponse = handleApiError(error)

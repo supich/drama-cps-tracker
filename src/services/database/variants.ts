@@ -2,6 +2,8 @@ import prisma from '@/lib/prisma'
 import { VariantStatus, Prisma } from '@prisma/client'
 import { NotFoundError, ConflictError } from '@/lib/errors'
 
+export const ORIGINAL_VIDEO_VARIANT_NAME = '原始视频'
+
 export class VariantService {
   // 获取所有变体（带分页和筛选）
   async getVariants(options: {
@@ -94,6 +96,7 @@ export class VariantService {
     hookType?: string
     ctaType?: string
     hashtags?: string[]
+    status?: VariantStatus
     extraData?: any
   }) {
     // 检查视频是否存在
@@ -126,7 +129,79 @@ export class VariantService {
         extraData: data.extraData || {},
       },
       include: {
-        video: true,
+        video: {
+          include: {
+            drama: true,
+          },
+        },
+      },
+    })
+  }
+
+  // 为原始视频创建或复用一个可发布版本，保持发布任务仍然能关联 variantId
+  async getOrCreateOriginalVideoVariant(videoId: string) {
+    const video = await prisma.video.findUnique({
+      where: { id: videoId },
+      include: { drama: true },
+    })
+
+    if (!video) {
+      throw new NotFoundError('Video', videoId)
+    }
+
+    const existingVariant = await prisma.videoVariant.findUnique({
+      where: {
+        videoId_variantName: {
+          videoId,
+          variantName: ORIGINAL_VIDEO_VARIANT_NAME,
+        },
+      },
+      include: {
+        video: {
+          include: {
+            drama: true,
+          },
+        },
+      },
+    })
+
+    if (existingVariant) {
+      if (existingVariant.status !== 'READY') {
+        return prisma.videoVariant.update({
+          where: { id: existingVariant.id },
+          data: { status: 'READY' },
+          include: {
+            video: {
+              include: {
+                drama: true,
+              },
+            },
+          },
+        })
+      }
+
+      return existingVariant
+    }
+
+    return prisma.videoVariant.create({
+      data: {
+        videoId,
+        variantName: ORIGINAL_VIDEO_VARIANT_NAME,
+        title: video.title,
+        caption: video.description,
+        coverUrl: video.coverUrl,
+        hashtags: video.tags,
+        status: 'READY',
+        extraData: {
+          source: 'original_video',
+        },
+      },
+      include: {
+        video: {
+          include: {
+            drama: true,
+          },
+        },
       },
     })
   }

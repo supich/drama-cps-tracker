@@ -36,6 +36,13 @@ interface Variant {
   }
 }
 
+interface VideoOption {
+  id: string
+  title: string
+  status: string
+  drama: { dramaName: string }
+}
+
 interface Page {
   id: string
   pageName: string
@@ -56,10 +63,12 @@ interface Task {
 
 export default function SchedulerPage() {
   const [variants, setVariants] = useState<Variant[]>([])
+  const [videos, setVideos] = useState<VideoOption[]>([])
   const [pages, setPages] = useState<Page[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVariants, setSelectedVariants] = useState<string[]>([])
+  const [selectedVideos, setSelectedVideos] = useState<string[]>([])
   const [selectedPages, setSelectedPages] = useState<string[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -85,24 +94,39 @@ export default function SchedulerPage() {
     nextWeek.setDate(today.getDate() + 7)
     setStartDate(today.toISOString().split('T')[0])
     setEndDate(nextWeek.toISOString().split('T')[0])
+
+    const params = new URLSearchParams(window.location.search)
+    const videoId = params.get('videoId')
+    const variantId = params.get('variantId')
+    if (videoId) {
+      setSelectedVideos([videoId])
+      setIsDialogOpen(true)
+    }
+    if (variantId) {
+      setSelectedVariants([variantId])
+      setIsDialogOpen(true)
+    }
   }, [])
 
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [variantsRes, pagesRes, tasksRes] = await Promise.all([
+      const [variantsRes, videosRes, pagesRes, tasksRes] = await Promise.all([
         fetch('/api/variants?limit=100'),
+        fetch('/api/videos?limit=100'),
         fetch('/api/pages?limit=100'),
         fetch('/api/publish-tasks?limit=100'),
       ])
 
-      const [variantsResult, pagesResult, tasksResult] = await Promise.all([
+      const [variantsResult, videosResult, pagesResult, tasksResult] = await Promise.all([
         variantsRes.json(),
+        videosRes.json(),
         pagesRes.json(),
         tasksRes.json(),
       ])
 
       if (variantsResult.success) setVariants(variantsResult.data.variants || [])
+      if (videosResult.success) setVideos(videosResult.data.videos || [])
       if (pagesResult.success) setPages(pagesResult.data.pages || [])
       if (tasksResult.success) setTasks(tasksResult.data.tasks || [])
     } catch (error) {
@@ -117,8 +141,8 @@ export default function SchedulerPage() {
   }
 
   const handleCreateBatchTasks = async () => {
-    if (selectedVariants.length === 0) {
-      toast({ title: '错误', description: '请至少选择一个剪辑版本', variant: 'destructive' })
+    if (selectedVariants.length === 0 && selectedVideos.length === 0) {
+      toast({ title: '错误', description: '请至少选择一个视频或剪辑版本', variant: 'destructive' })
       return
     }
     if (selectedPages.length === 0) {
@@ -132,6 +156,7 @@ export default function SchedulerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           variantIds: selectedVariants,
+          videoIds: selectedVideos,
           pageIds: selectedPages,
           startDate: new Date(startDate).toISOString(),
           endDate: new Date(endDate).toISOString(),
@@ -152,6 +177,7 @@ export default function SchedulerPage() {
         setIsDialogOpen(false)
         fetchData()
         setSelectedVariants([])
+        setSelectedVideos([])
         setSelectedPages([])
       } else {
         toast({
@@ -241,6 +267,39 @@ export default function SchedulerPage() {
             <div className="space-y-6">
               {/* Select Variants */}
               <div className="space-y-2">
+                <Label>选择原始视频（已选 {selectedVideos.length} 个）</Label>
+                <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
+                  {videos.map(video => (
+                    <div key={video.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`video-${video.id}`}
+                        checked={selectedVideos.includes(video.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedVideos([...selectedVideos, video.id])
+                          } else {
+                            setSelectedVideos(selectedVideos.filter(id => id !== video.id))
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`video-${video.id}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {video.title} - {video.drama.dramaName}
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {video.status}
+                        </Badge>
+                      </label>
+                    </div>
+                  ))}
+                  {videos.length === 0 && (
+                    <p className="text-sm text-muted-foreground">暂无视频，请先在视频管理中创建视频。</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label>选择剪辑版本（已选 {selectedVariants.length} 个）</Label>
                 <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
                   {variants.map(variant => (
@@ -261,9 +320,15 @@ export default function SchedulerPage() {
                         className="text-sm cursor-pointer"
                       >
                         {variant.variantName} - {variant.video.drama.dramaName}
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {variant.title}
+                        </Badge>
                       </label>
                     </div>
                   ))}
+                  {variants.length === 0 && (
+                    <p className="text-sm text-muted-foreground">暂无剪辑版本，可直接选择上方原始视频发布。</p>
+                  )}
                 </div>
               </div>
 

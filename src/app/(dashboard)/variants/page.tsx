@@ -6,15 +6,23 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { formatNumber, getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { Layers, Plus, Search, Play, Tag, Video } from 'lucide-react'
+import { CalendarPlus, Layers, Plus, Search, Play, Tag, Video } from 'lucide-react'
+import Link from 'next/link'
 
 interface VariantData {
   id: string
@@ -41,11 +49,38 @@ interface VariantData {
   }
 }
 
+interface VideoOption {
+  id: string
+  title: string
+  coverUrl: string | null
+  language: string
+  tags: string[]
+  drama: {
+    dramaName: string
+  }
+}
+
+const emptyForm = {
+  videoId: '',
+  variantName: '',
+  title: '',
+  caption: '',
+  coverUrl: '',
+  hookType: '',
+  ctaType: '',
+  hashtags: '',
+  status: 'READY',
+}
+
 export default function VariantsPage() {
   const [variants, setVariants] = useState<VariantData[]>([])
+  const [videos, setVideos] = useState<VideoOption[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState(emptyForm)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -55,20 +90,87 @@ export default function VariantsPage() {
   const fetchVariants = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/variants')
-      const result = await response.json()
+      const [variantsRes, videosRes] = await Promise.all([
+        fetch('/api/variants?limit=100'),
+        fetch('/api/videos?limit=100'),
+      ])
+      const [variantsResult, videosResult] = await Promise.all([
+        variantsRes.json(),
+        videosRes.json(),
+      ])
 
-      if (result.success) {
-        setVariants(result.data.variants)
+      if (variantsResult.success) {
+        setVariants(variantsResult.data.variants)
+      }
+      if (videosResult.success) {
+        setVideos(videosResult.data.videos)
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch variants',
+        title: '错误',
+        description: '获取剪辑版本失败',
         variant: 'destructive',
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenCreate = () => {
+    setForm(emptyForm)
+    setIsDialogOpen(true)
+  }
+
+  const handleVideoChange = (videoId: string) => {
+    const video = videos.find(item => item.id === videoId)
+    setForm(prev => ({
+      ...prev,
+      videoId,
+      title: prev.title || video?.title || '',
+      coverUrl: prev.coverUrl || video?.coverUrl || '',
+      hashtags: prev.hashtags || (video?.tags || []).join(', '),
+    }))
+  }
+
+  const handleCreateVariant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.videoId || !form.variantName.trim() || !form.title.trim()) {
+      toast({ title: '错误', description: '请选择视频，并填写版本名称和发布标题', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      const body: Record<string, unknown> = {
+        videoId: form.videoId,
+        variantName: form.variantName.trim(),
+        title: form.title.trim(),
+        status: form.status,
+        hashtags: form.hashtags.split(',').map(tag => tag.trim().replace(/^#/, '')).filter(Boolean),
+      }
+      if (form.caption.trim()) body.caption = form.caption.trim()
+      if (form.coverUrl.trim()) body.coverUrl = form.coverUrl.trim()
+      if (form.hookType.trim()) body.hookType = form.hookType.trim()
+      if (form.ctaType.trim()) body.ctaType = form.ctaType.trim()
+
+      const response = await fetch('/api/variants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({ title: '成功', description: '剪辑版本已创建' })
+        setIsDialogOpen(false)
+        fetchVariants()
+      } else {
+        toast({ title: '错误', description: result.error?.message || '创建失败', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: '错误', description: '创建剪辑版本失败', variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -90,7 +192,7 @@ export default function VariantsPage() {
             管理视频的不同剪辑版本
           </p>
         </div>
-        <Button>
+        <Button onClick={handleOpenCreate}>
           <Plus className="mr-2 h-4 w-4" />
           创建版本
         </Button>
@@ -221,14 +323,136 @@ export default function VariantsPage() {
                   {formatDate(variant.createdAt)}
                 </div>
 
-                <Button variant="outline" size="sm" className="w-full">
-                  查看详情
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm">
+                    查看详情
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link href={`/scheduler?variantId=${variant.id}`}>
+                      <CalendarPlus className="mr-2 h-4 w-4" />
+                      发布
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>创建剪辑版本</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateVariant} className="space-y-4 mt-2">
+            <div className="space-y-1">
+              <Label>所属视频 <span className="text-red-500">*</span></Label>
+              <Select value={form.videoId} onValueChange={handleVideoChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择视频" />
+                </SelectTrigger>
+                <SelectContent>
+                  {videos.map(video => (
+                    <SelectItem key={video.id} value={video.id}>
+                      {video.title} - {video.drama.dramaName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {videos.length === 0 && (
+                <p className="text-xs text-muted-foreground">暂无视频，请先在视频管理中创建视频。</p>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label>版本名称 <span className="text-red-500">*</span></Label>
+                <Input
+                  placeholder="如 高冲突开头 / A版"
+                  value={form.variantName}
+                  onChange={e => setForm(f => ({ ...f, variantName: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>状态</Label>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="READY">已就绪</SelectItem>
+                    <SelectItem value="DRAFT">草稿</SelectItem>
+                    <SelectItem value="ARCHIVED">已归档</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>发布标题 <span className="text-red-500">*</span></Label>
+              <Input
+                placeholder="发布到 Facebook 时使用的标题"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>发布文案</Label>
+              <Input
+                placeholder="视频正文文案（可选）"
+                value={form.caption}
+                onChange={e => setForm(f => ({ ...f, caption: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>封面图链接</Label>
+              <Input
+                placeholder="https://example.com/cover.jpg"
+                value={form.coverUrl}
+                onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Hook 类型</Label>
+                <Input
+                  placeholder="悬念 / 情感 / 冲突"
+                  value={form.hookType}
+                  onChange={e => setForm(f => ({ ...f, hookType: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>CTA 类型</Label>
+                <Input
+                  placeholder="立即观看 / 免费看"
+                  value={form.ctaType}
+                  onChange={e => setForm(f => ({ ...f, ctaType: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>话题标签（逗号分隔）</Label>
+              <Input
+                placeholder="drama, romance, episode1"
+                value={form.hashtags}
+                onChange={e => setForm(f => ({ ...f, hashtags: e.target.value }))}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>取消</Button>
+              <Button type="submit" disabled={submitting || videos.length === 0}>
+                {submitting ? '创建中...' : '创建版本'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

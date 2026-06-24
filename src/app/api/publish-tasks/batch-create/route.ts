@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     // 创建发布任务
     const result = await publishTaskService.createBatchTasks({
       variantIds: validatedData.variantIds,
+      videoIds: validatedData.videoIds,
       pageIds: validatedData.pageIds,
       startDate: new Date(validatedData.startDate),
       endDate: new Date(validatedData.endDate),
@@ -26,14 +27,8 @@ export async function POST(request: NextRequest) {
     
     // 如果成功创建了任务，将它们添加到队列
     if (result.created > 0) {
-      // 获取刚创建的任务
-      const tasks = await publishTaskService.getTasks({
-        limit: result.created,
-        status: 'PENDING',
-      })
-      
       // 添加到队列
-      const queueJobs = tasks.tasks.map(task => ({
+      const queueJobs = result.tasks.map(task => ({
         taskId: task.id,
         pageId: task.pageId,
         videoId: task.videoId,
