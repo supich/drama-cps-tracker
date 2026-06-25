@@ -1,10 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Select,
   SelectContent,
@@ -21,7 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { CalendarPlus, Video, Plus, Search, Play, Clock } from 'lucide-react'
+import { CalendarPlus, Video, Plus, Search } from 'lucide-react'
 import Link from 'next/link'
 
 interface VideoData {
@@ -324,81 +332,69 @@ export default function VideosPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredVideos.map((video) => (
-            <Card key={video.id} className="overflow-hidden">
-              {/* Video Thumbnail */}
-              <div className="aspect-video bg-muted relative">
-                {video.coverUrl ? (
-                  <img
-                    src={video.coverUrl}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <Play className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                {video.duration && (
-                  <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
-                    {formatDuration(video.duration)}
-                  </div>
-                )}
-              </div>
-              
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-base line-clamp-2">{video.title}</CardTitle>
-                  <Badge className={getStatusColor(video.status)}>
-                    {video.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-3">
-                <div className="text-sm text-muted-foreground">
-                  剧集：{video.drama.dramaName}
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{video.language}</Badge>
-                  {video.tags.slice(0, 2).map((tag, i) => (
-                    <Badge key={i} variant="secondary">{tag}</Badge>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">剪辑版本</p>
-                    <p className="font-medium">{video._count.variants}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">发布任务</p>
-                    <p className="font-medium">{video._count.publishTasks}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {formatDate(video.createdAt)}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleOpenDetails(video)}>
-                    查看详情
-                  </Button>
-                  <Button size="sm" asChild>
-                    <Link href={`/scheduler?videoId=${video.id}`}>
-                      <CalendarPlus className="mr-2 h-4 w-4" />
-                      发布
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>视频</TableHead>
+                  <TableHead>剧集</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>时长</TableHead>
+                  <TableHead>标签</TableHead>
+                  <TableHead className="text-right">剪辑版本</TableHead>
+                  <TableHead className="text-right">发布任务</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredVideos.map((video) => (
+                  <TableRow key={video.id}>
+                    <TableCell className="min-w-[260px]">
+                      <div className="space-y-1">
+                        <p className="font-medium leading-none line-clamp-1">{video.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{video.fileUrl}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[180px]">{video.drama.dramaName}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(video.status)}>{video.status}</Badge>
+                    </TableCell>
+                    <TableCell>{formatDuration(video.duration)}</TableCell>
+                    <TableCell className="min-w-[160px]">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="outline">{video.language}</Badge>
+                        {video.tags.slice(0, 2).map((tag, i) => (
+                          <Badge key={i} variant="secondary">{tag}</Badge>
+                        ))}
+                        {video.tags.length > 2 && (
+                          <Badge variant="secondary">+{video.tags.length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{formatNumber(video._count.variants)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatNumber(video._count.publishTasks)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(video.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenDetails(video)}>
+                          查看详情
+                        </Button>
+                        <Button size="sm" asChild>
+                          <Link href={`/scheduler?videoId=${video.id}`}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            发布
+                          </Link>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <VideoDetailDialog
@@ -510,16 +506,6 @@ function VideoDetailDialog({
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-4 mt-2">
-          <div className="aspect-video overflow-hidden rounded-md bg-muted">
-            {editForm.coverUrl ? (
-              <img src={editForm.coverUrl} alt={editForm.title} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Play className="h-12 w-12 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <Label>所属剧集 <span className="text-red-500">*</span></Label>

@@ -1,10 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +29,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { formatNumber, getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { CalendarPlus, Layers, Plus, Search, Play, Tag, Video } from 'lucide-react'
+import { CalendarPlus, Layers, Plus, Search, Tag } from 'lucide-react'
 import Link from 'next/link'
 
 interface VariantData {
@@ -240,105 +248,89 @@ export default function VariantsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredVariants.map((variant) => (
-            <Card key={variant.id} className="overflow-hidden">
-              {/* Variant Thumbnail */}
-              <div className="aspect-video bg-muted relative">
-                {variant.coverUrl ? (
-                  <img
-                    src={variant.coverUrl}
-                    alt={variant.variantName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <Play className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="absolute top-2 left-2">
-                  <Badge className="bg-blue-500 text-white">
-                    {variant.video.title.split(' - ')[0]}
-                  </Badge>
-                </div>
-              </div>
-
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-base line-clamp-2">{variant.variantName}</CardTitle>
-                  <Badge className={getStatusColor(variant.status)}>
-                    {variant.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {variant.title}
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {variant.hookType && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      {variant.hookType}
-                    </Badge>
-                  )}
-                  {variant.ctaType && (
-                    <Badge variant="outline">
-                      {variant.ctaType}
-                    </Badge>
-                  )}
-                </div>
-
-                {variant.hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {variant.hashtags.slice(0, 3).map((tag, i) => (
-                      <span key={i} className="text-xs text-muted-foreground">
-                        #{tag}
-                      </span>
-                    ))}
-                    {variant.hashtags.length > 3 && (
-                      <span className="text-xs text-muted-foreground">
-                        +{variant.hashtags.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">发布任务</p>
-                    <p className="font-medium">{variant._count.publishTasks}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">剧集</p>
-                    <p className="font-medium text-xs line-clamp-1">
-                      {variant.video.drama.dramaName}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Video className="h-3 w-3" />
-                  {formatDate(variant.createdAt)}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSelectedVariant(variant)}>
-                    查看详情
-                  </Button>
-                  <Button size="sm" asChild>
-                    <Link href={`/scheduler?variantId=${variant.id}`}>
-                      <CalendarPlus className="mr-2 h-4 w-4" />
-                      发布
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>剪辑版本</TableHead>
+                  <TableHead>所属视频</TableHead>
+                  <TableHead>剧集</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>类型</TableHead>
+                  <TableHead>话题</TableHead>
+                  <TableHead className="text-right">发布任务</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredVariants.map((variant) => (
+                  <TableRow key={variant.id}>
+                    <TableCell className="min-w-[260px]">
+                      <div className="space-y-1">
+                        <p className="font-medium leading-none line-clamp-1">{variant.variantName}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{variant.title}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[220px]">
+                      <p className="line-clamp-1">{variant.video.title}</p>
+                    </TableCell>
+                    <TableCell className="min-w-[180px]">{variant.video.drama.dramaName}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(variant.status)}>{variant.status}</Badge>
+                    </TableCell>
+                    <TableCell className="min-w-[160px]">
+                      <div className="flex flex-wrap gap-1">
+                        {variant.hookType && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Tag className="h-3 w-3" />
+                            {variant.hookType}
+                          </Badge>
+                        )}
+                        {variant.ctaType && (
+                          <Badge variant="outline">{variant.ctaType}</Badge>
+                        )}
+                        {!variant.hookType && !variant.ctaType && (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-[160px]">
+                      {variant.hashtags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {variant.hashtags.slice(0, 2).map((tag, i) => (
+                            <Badge key={i} variant="secondary">#{tag}</Badge>
+                          ))}
+                          {variant.hashtags.length > 2 && (
+                            <Badge variant="secondary">+{variant.hashtags.length - 2}</Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{formatNumber(variant._count.publishTasks)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(variant.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedVariant(variant)}>
+                          查看详情
+                        </Button>
+                        <Button size="sm" asChild>
+                          <Link href={`/scheduler?variantId=${variant.id}`}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            发布
+                          </Link>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -558,20 +550,6 @@ function VariantDetailDialog({
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-5">
-          <div className="aspect-video overflow-hidden rounded-md bg-muted">
-            {editForm.coverUrl ? (
-              <img
-                src={editForm.coverUrl}
-                alt={editForm.variantName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Play className="h-12 w-12 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={getStatusColor(variant.status)}>{variant.status}</Badge>
             <Badge variant="outline">{variant.video.title}</Badge>
