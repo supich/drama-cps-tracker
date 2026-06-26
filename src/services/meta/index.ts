@@ -46,6 +46,11 @@ export async function getVideoInsights(videoId: string, pageAccessToken: string)
   return client.getVideoInsights(videoId, pageAccessToken)
 }
 
+export async function getPostVideoReference(postId: string, pageAccessToken: string) {
+  const client = getMetaClient()
+  return client.getPostVideoReference(postId, pageAccessToken)
+}
+
 export async function getObjectEngagement(objectId: string, pageAccessToken: string) {
   const client = getMetaClient()
   return client.getObjectEngagement(objectId, pageAccessToken)

@@ -308,6 +308,17 @@ export default function SchedulerPage() {
 
   const weekDays = getWeekDays()
   const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+  const activePages = pages.filter(page => page.status === 'ACTIVE')
+  const allActivePagesSelected = activePages.length > 0 && activePages.every(page => selectedPages.includes(page.id))
+
+  const handleToggleAllPages = () => {
+    if (allActivePagesSelected) {
+      setSelectedPages([])
+      return
+    }
+
+    setSelectedPages(activePages.map(page => page.id))
+  }
 
   return (
     <div className="space-y-6">
@@ -400,9 +411,22 @@ export default function SchedulerPage() {
 
               {/* Select Pages */}
               <div className="space-y-2">
-                <Label>选择主页（已选 {selectedPages.length} 个）</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label>选择主页（已选 {selectedPages.length} 个）</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleAllPages}
+                      disabled={activePages.length === 0}
+                    >
+                      {allActivePagesSelected ? '清空主页' : '全选主页'}
+                    </Button>
+                  </div>
+                </div>
                 <div className="border rounded-lg p-4 max-h-48 overflow-y-auto space-y-2">
-                  {pages.filter(p => p.status === 'ACTIVE').map(page => (
+                  {activePages.map(page => (
                     <div key={page.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`page-${page.id}`}
@@ -426,6 +450,9 @@ export default function SchedulerPage() {
                       </label>
                     </div>
                   ))}
+                  {activePages.length === 0 && (
+                    <p className="text-sm text-muted-foreground">暂无可发布的活跃主页。</p>
+                  )}
                 </div>
               </div>
 

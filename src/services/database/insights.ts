@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import { getObjectEngagement, getPostInsights, getVideoInsights } from '@/services/meta'
+import { getObjectEngagement, getPostInsights, getPostVideoReference, getVideoInsights } from '@/services/meta'
 import { MetaPostInsights } from '@/services/meta/types'
 
 type InsightTotals = {
@@ -23,6 +23,43 @@ function getReactionTotal(insights: MetaPostInsights | null, metricName: string)
 }
 
 export class InsightsService {
+  private async resolveVideoIdFromTask(task: {
+    id: string
+    fbPostId: string | null
+    fbVideoId: string | null
+    page: { accessToken: string }
+  }) {
+    if (task.fbVideoId) return task.fbVideoId
+
+    const videoIdFromPostId = task.fbPostId?.match(/^\d+_(\d+)$/)?.[1]
+    if (videoIdFromPostId) {
+      await prisma.publishTask.update({
+        where: { id: task.id },
+        data: { fbVideoId: videoIdFromPostId },
+      })
+      return videoIdFromPostId
+    }
+
+    if (!task.fbPostId) return null
+
+    const reference = await getPostVideoReference(task.fbPostId, task.page.accessToken)
+    const attachmentVideoId = reference.attachments?.data?.find(attachment => {
+      const type = `${attachment.media_type || ''} ${attachment.type || ''}`.toLowerCase()
+      return type.includes('video') && attachment.target?.id
+    })?.target?.id
+    const fallbackTargetId = reference.attachments?.data?.find(attachment => attachment.target?.id)?.target?.id
+    const resolvedVideoId = reference.object_id || attachmentVideoId || fallbackTargetId || null
+
+    if (resolvedVideoId) {
+      await prisma.publishTask.update({
+        where: { id: task.id },
+        data: { fbVideoId: resolvedVideoId },
+      })
+    }
+
+    return resolvedVideoId
+  }
+
   async syncPublishTaskInsights(taskId: string) {
     const task = await prisma.publishTask.findUnique({
       where: { id: taskId },
@@ -58,10 +95,17 @@ export class InsightsService {
 
     let videoInsights: MetaPostInsights | null = null
     let postInsights: MetaPostInsights | null = null
+    let resolvedVideoId = task.fbVideoId
 
-    if (task.fbVideoId) {
+    try {
+      resolvedVideoId = await this.resolveVideoIdFromTask(task)
+    } catch (error: any) {
+      errors.push(`resolve_video_id: ${error.message}`)
+    }
+
+    if (resolvedVideoId) {
       try {
-        videoInsights = await getVideoInsights(task.fbVideoId, task.page.accessToken)
+        videoInsights = await getVideoInsights(resolvedVideoId, task.page.accessToken)
         totals.views = getMetricValue(videoInsights, 'total_video_views')
         totals.reactions = getReactionTotal(videoInsights, 'total_video_reactions_by_type_total')
       } catch (error: any) {
@@ -113,7 +157,7 @@ export class InsightsService {
       update: {
         publishTaskId: task.id,
         fbPostId: task.fbPostId,
-        fbVideoId: task.fbVideoId,
+        fbVideoId: resolvedVideoId,
         views: totals.views,
         reactions: totals.reactions,
         comments: totals.comments,
@@ -126,7 +170,7 @@ export class InsightsService {
         variantId: task.variantId,
         publishTaskId: task.id,
         fbPostId: task.fbPostId,
-        fbVideoId: task.fbVideoId,
+        fbVideoId: resolvedVideoId,
         views: totals.views,
         reactions: totals.reactions,
         comments: totals.comments,

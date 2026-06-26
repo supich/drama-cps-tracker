@@ -8,6 +8,7 @@ import {
   MetaUserPageAccount,
   MetaLongLivedTokenResponse,
   MetaObjectEngagement,
+  MetaPostVideoReference,
   MetaPostInsights,
   MetaVideoInsights,
   MetaPublishVideoResponse,
@@ -380,6 +381,7 @@ export class MetaClient {
         await this.client.get(`/${postId}/insights`, {
           params: {
             metric: metrics,
+            period: 'lifetime',
             access_token: accessToken,
           },
         })
@@ -434,6 +436,7 @@ export class MetaClient {
           await this.client.get(`/${videoId}/video_insights`, {
             params: {
               metric: metricSet.join(','),
+              period: 'lifetime',
               access_token: accessToken,
             },
           })
@@ -471,6 +474,40 @@ export class MetaClient {
       metaError,
       lastError?.response?.status || 400
     )
+  }
+
+  // 从帖子对象里解析关联的视频 ID，用于补救旧任务只保存了 fbPostId 的情况。
+  async getPostVideoReference(
+    postId: string,
+    accessToken: string
+  ): Promise<MetaPostVideoReference> {
+    try {
+      const response: AxiosResponse<MetaAPIResponse<MetaPostVideoReference> | MetaPostVideoReference> =
+        await this.client.get(`/${postId}`, {
+          params: {
+            fields: 'object_id,attachments{target,type,media_type}',
+            access_token: accessToken,
+          },
+        })
+
+      const responseData = response.data
+      const metaError = 'error' in responseData ? responseData.error : undefined
+
+      if (metaError) {
+        throw new MetaAPIError(metaError.message, metaError)
+      }
+
+      return 'data' in responseData && responseData.data
+        ? responseData.data
+        : responseData as MetaPostVideoReference
+    } catch (error: any) {
+      if (error instanceof MetaAPIError) throw error
+      throw new MetaAPIError(
+        `Failed to get post video reference: ${error.message}`,
+        error.response?.data?.error,
+        error.response?.status || 400
+      )
+    }
   }
 
   // 获取帖子/视频对象的互动摘要，用于补充评论、分享、总互动数。

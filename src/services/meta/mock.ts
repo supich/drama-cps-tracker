@@ -5,6 +5,7 @@ import {
   MetaTokenInfo,
   MetaUserPageAccount,
   MetaObjectEngagement,
+  MetaPostVideoReference,
   MetaPostInsights,
   MetaVideoInsights,
   MetaPublishVideoResponse,
@@ -180,6 +181,26 @@ export class MockMetaClient {
           description: 'Total video reactions by type.',
         },
       ],
+    }
+  }
+
+  async getPostVideoReference(
+    postId: string,
+    accessToken: string
+  ): Promise<MetaPostVideoReference> {
+    await mockDelay()
+
+    return {
+      object_id: `${postId}_video`,
+      attachments: {
+        data: [
+          {
+            media_type: 'video',
+            type: 'video_inline',
+            target: { id: `${postId}_video` },
+          },
+        ],
+      },
     }
   }
 

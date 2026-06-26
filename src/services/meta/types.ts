@@ -74,6 +74,19 @@ export interface MetaObjectEngagement {
   }
 }
 
+export interface MetaPostVideoReference {
+  object_id?: string
+  attachments?: {
+    data?: Array<{
+      media_type?: string
+      type?: string
+      target?: {
+        id?: string
+      }
+    }>
+  }
+}
+
 export interface MetaPublishVideoResponse {
   id: string
   post_id: string

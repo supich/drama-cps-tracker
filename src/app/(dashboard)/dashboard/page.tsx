@@ -108,7 +108,7 @@ export default function DashboardPage() {
       const response = await fetch('/api/analytics/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 100 }),
+        body: JSON.stringify({ limit: 1000 }),
       })
       const result = await response.json()
 
@@ -117,9 +117,13 @@ export default function DashboardPage() {
       }
 
       await fetchDashboardData()
+      const firstFailure = result.data.failures?.[0]?.message
       toast({
-        title: '同步完成',
-        description: `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个`,
+        title: result.data.failed > 0 ? '部分同步完成' : '同步完成',
+        description: firstFailure
+          ? `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个：${firstFailure}`
+          : `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个`,
+        variant: result.data.failed > 0 ? 'destructive' : 'default',
       })
     } catch (error: any) {
       toast({

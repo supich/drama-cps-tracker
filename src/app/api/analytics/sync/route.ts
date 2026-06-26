@@ -8,8 +8,8 @@ import { handleApiError, successResponse } from '@/lib/errors'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
-    const requestedLimit = Number(body.limit || 50)
-    const limit = Math.min(Math.max(requestedLimit, 1), 100)
+    const requestedLimit = Number(body.limit || 500)
+    const limit = Math.min(Math.max(requestedLimit, 1), 1000)
 
     const result = await insightsService.syncRecentPublishedTasks(limit)
     return NextResponse.json(successResponse(result))
