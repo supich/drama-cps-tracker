@@ -60,6 +60,16 @@ interface TimeStats {
   revenue: number
 }
 
+async function readJsonResponse(response: Response) {
+  const text = await response.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    const preview = text.replace(/\s+/g, ' ').slice(0, 160)
+    throw new Error(`接口返回非 JSON，可能是请求超时或服务错误：${preview}`)
+  }
+}
+
 export default function AnalyticsPage() {
   const [statsByPage, setStatsByPage] = useState<PageStats[]>([])
   const [statsByDrama, setStatsByDrama] = useState<DramaStats[]>([])
@@ -136,25 +146,44 @@ export default function AnalyticsPage() {
   const handleSyncInsights = async () => {
     try {
       setSyncing(true)
-      const response = await fetch('/api/analytics/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 1000 }),
-      })
-      const result = await response.json()
+      let offset = 0
+      let synced = 0
+      let failed = 0
+      let skipped = 0
+      let totalAvailable = 0
+      let firstFailure = ''
+      let hasMore = true
+      let batches = 0
 
-      if (!result.success) {
-        throw new Error(result.error?.message || '同步 Facebook 数据失败')
+      while (hasMore && batches < 100) {
+        const response = await fetch('/api/analytics/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 3, offset }),
+        })
+        const result = await readJsonResponse(response)
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error?.message || '同步 Facebook 数据失败')
+        }
+
+        synced += result.data.synced || 0
+        failed += result.data.failed || 0
+        skipped += result.data.skipped || 0
+        totalAvailable = result.data.totalAvailable || totalAvailable
+        firstFailure = firstFailure || result.data.failures?.[0]?.message || ''
+        offset = result.data.nextOffset || offset + 3
+        hasMore = Boolean(result.data.hasMore)
+        batches++
       }
 
       await fetchAnalytics()
-      const firstFailure = result.data.failures?.[0]?.message
       toast({
-        title: result.data.failed > 0 ? '部分同步完成' : '同步完成',
+        title: failed > 0 ? '部分同步完成' : '同步完成',
         description: firstFailure
-          ? `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个：${firstFailure}`
-          : `已同步 ${result.data.synced} 个任务，失败 ${result.data.failed} 个`,
-        variant: result.data.failed > 0 ? 'destructive' : 'default',
+          ? `已处理 ${synced + failed + skipped}/${totalAvailable} 个任务，失败 ${failed} 个：${firstFailure}`
+          : `已处理 ${synced + failed + skipped}/${totalAvailable} 个任务，失败 ${failed} 个`,
+        variant: failed > 0 ? 'destructive' : 'default',
       })
     } catch (error: any) {
       toast({

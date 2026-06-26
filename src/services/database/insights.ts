@@ -188,19 +188,24 @@ export class InsightsService {
     }
   }
 
-  async syncRecentPublishedTasks(limit = 50) {
-    const tasks = await prisma.publishTask.findMany({
-      where: {
-        status: 'PUBLISHED',
-        OR: [
-          { fbPostId: { not: null } },
-          { fbVideoId: { not: null } },
-        ],
-      },
-      orderBy: { publishedAt: 'desc' },
-      take: limit,
-      select: { id: true },
-    })
+  async syncRecentPublishedTasks(limit = 3, offset = 0) {
+    const where = {
+      status: 'PUBLISHED' as const,
+      OR: [
+        { fbPostId: { not: null } },
+        { fbVideoId: { not: null } },
+      ],
+    }
+    const [totalAvailable, tasks] = await Promise.all([
+      prisma.publishTask.count({ where }),
+      prisma.publishTask.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        orderBy: { publishedAt: 'desc' },
+        select: { id: true },
+      }),
+    ])
 
     let synced = 0
     let skipped = 0
@@ -218,6 +223,10 @@ export class InsightsService {
 
     return {
       total: tasks.length,
+      totalAvailable,
+      offset,
+      nextOffset: offset + tasks.length,
+      hasMore: offset + tasks.length < totalAvailable,
       synced,
       skipped,
       failed: failures.length,
