@@ -72,6 +72,11 @@ document.getElementById("adminHubButton").addEventListener("click", async () => 
   chrome.tabs.create({ url })
 })
 
+document.getElementById("openPagesButton").addEventListener("click", async () => {
+  await send({ type: "FB_PUBLISHER_OPEN_PAGES_MANAGER" })
+  window.close()
+})
+
 document.getElementById("refreshButton").addEventListener("click", refreshActiveTab)
 
 refreshActiveTab().catch(() => refresh())

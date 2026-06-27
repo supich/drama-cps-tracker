@@ -11,13 +11,68 @@ function readText(element) {
   return (element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim()
 }
 
-function readAccountName() {
+const GENERIC_LABELS = new Set([
+  "account",
+  "your profile",
+  "profile",
+  "home",
+  "watch",
+  "marketplace",
+  "groups",
+  "gaming",
+  "menu",
+  "notifications",
+  "messenger",
+  "facebook",
+  "你的个人主页",
+  "您的个人主页",
+  "个人主页",
+  "更新个人主页",
+  "编辑个人主页",
+  "查看个人主页",
+  "主页",
+  "首页",
+  "菜单",
+  "通知",
+  "小组",
+  "帐户",
+  "账号",
+  "账户"
+])
+
+function normalizeName(value = "") {
+  return value.replace(/\s+/g, " ").trim()
+}
+
+function isUsefulName(value = "") {
+  const text = normalizeName(value)
+  if (!text || text.length < 2 || text.length > 80) return false
+  if (GENERIC_LABELS.has(text.toLowerCase())) return false
+  if (/^(facebook|meta business suite)$/i.test(text)) return false
+  if (/^(see all|view all|manage|settings|create|edit|update)$/i.test(text)) return false
+  if (/^(查看全部|管理|设置|创建|编辑|更新)$/.test(text)) return false
+  return true
+}
+
+function titleCandidate() {
   const metaTitle = document.querySelector('meta[property="og:title"]')?.content
-  if (metaTitle && !/Facebook/i.test(metaTitle) && metaTitle.length < 80) {
-    return metaTitle
-  }
+  if (isUsefulName(metaTitle)) return normalizeName(metaTitle)
+
+  const pageTitle = document.title
+    .replace(/\s*\|\s*Facebook\s*$/i, "")
+    .replace(/\s*-\s*Facebook\s*$/i, "")
+  if (isUsefulName(pageTitle)) return normalizeName(pageTitle)
+
+  return ""
+}
+
+function readAccountName() {
+  const fromTitle = titleCandidate()
+  if (fromTitle) return fromTitle
 
   const candidates = [
+    document.querySelector('[role="main"] h1'),
+    document.querySelector('h1'),
     document.querySelector('[aria-label*="Account"]'),
     document.querySelector('[aria-label*="Your profile"]'),
     document.querySelector('[aria-label*="个人主页"]'),
@@ -31,8 +86,8 @@ function readAccountName() {
 
   for (const candidate of candidates) {
     const aria = candidate?.getAttribute?.("aria-label")
-    const text = aria || readText(candidate)
-    if (text && text.length < 80) return text
+    const text = normalizeName(aria || readText(candidate))
+    if (isUsefulName(text)) return text
   }
 
   return ""
@@ -40,42 +95,39 @@ function readAccountName() {
 
 function readPages() {
   const anchors = [...document.querySelectorAll("a[href]")]
-  const badNames = new Set([
-    "home",
-    "watch",
-    "marketplace",
-    "groups",
-    "gaming",
-    "menu",
-    "notifications",
-    "messenger",
-    "facebook",
-    "主页",
-    "首页",
-    "菜单",
-    "通知",
-    "小组"
-  ])
+  const isPagesDirectory =
+    location.pathname.includes("/pages") ||
+    location.hostname.includes("business.facebook.com") ||
+    location.href.includes("business.facebook.com/latest")
+
   const pageCandidates = anchors
     .map(anchor => {
       const href = anchor.href
-      const text = readText(anchor)
-      const profileId = new URL(href, location.href).searchParams.get("profile_id")
-      const pageId = new URL(href, location.href).searchParams.get("id")
-      const path = new URL(href, location.href).pathname
+      const text = normalizeName(readText(anchor) || anchor.getAttribute("aria-label") || "")
+      const url = new URL(href, location.href)
+      const profileId = url.searchParams.get("profile_id")
+      const pageId = url.searchParams.get("id")
+      const path = url.pathname
       const looksLikePage =
-        href.includes("/pages/") ||
+        isPagesDirectory &&
+        (
+          href.includes("/pages/") ||
+          href.includes("/pages/?") ||
+          href.includes("/pages/manage") ||
+          href.includes("/pages/?category=") ||
+          href.includes("/latest/home") ||
+          href.includes("/latest/posts") ||
+          href.includes("business.facebook.com/latest/home") ||
+          profileId ||
+          pageId
+        )
+
+      const looksLikeDirectoryOnly =
         href.includes("/pages/?") ||
         href.includes("/pages/manage") ||
-        href.includes("/pages/?category=") ||
-        href.includes("/profile.php?id=") ||
-        href.includes("/latest/home") ||
-        href.includes("/latest/posts") ||
-        href.includes("profile_id=") ||
-        href.includes("business.facebook.com/latest/home")
+        href.includes("/pages/?category=")
 
-      if (!looksLikePage || !text || text.length < 2 || text.length > 80) return null
-      if (badNames.has(text.toLowerCase())) return null
+      if (!looksLikePage || looksLikeDirectoryOnly || !isUsefulName(text)) return null
 
       return {
         id: profileId || pageId || path || href,

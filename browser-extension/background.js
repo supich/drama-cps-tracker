@@ -145,6 +145,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return
     }
 
+    if (message?.type === "FB_PUBLISHER_OPEN_PAGES_MANAGER") {
+      const tab = await getActiveTab()
+      const url = "https://www.facebook.com/pages/?category=your_pages"
+      if (tab?.id) {
+        await chrome.tabs.update(tab.id, { url })
+      } else {
+        await chrome.tabs.create({ url })
+      }
+      await appendLog("info", "Opening Facebook Pages manager", { url })
+      sendResponse({ ok: true })
+      return
+    }
+
     if (message?.type === "FB_PUBLISHER_SAVE_SETTINGS") {
       const { settings } = await getState()
       await chrome.storage.local.set({
