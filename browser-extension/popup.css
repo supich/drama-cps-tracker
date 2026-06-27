@@ -54,6 +54,12 @@ h1 {
   gap: 12px;
 }
 
+.actions .wide {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  font-size: 18px;
+}
+
 button {
   min-height: 64px;
   border: 1px solid #ccd4df;

@@ -48,6 +48,11 @@ async function refresh() {
   renderLogs(response.logs || [])
 }
 
+async function refreshActiveTab() {
+  await send({ type: "FB_PUBLISHER_REFRESH_ACTIVE_TAB" })
+  await refresh()
+}
+
 document.getElementById("settingsButton").addEventListener("click", () => {
   chrome.runtime.openOptionsPage()
 })
@@ -67,5 +72,7 @@ document.getElementById("adminHubButton").addEventListener("click", async () => 
   chrome.tabs.create({ url })
 })
 
-refresh()
+document.getElementById("refreshButton").addEventListener("click", refreshActiveTab)
+
+refreshActiveTab().catch(() => refresh())
 setInterval(refresh, 1500)
