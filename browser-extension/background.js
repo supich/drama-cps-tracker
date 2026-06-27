@@ -3,6 +3,7 @@ const DEFAULT_STATE = {
   profileName: "",
   accountName: "",
   pages: [],
+  pagesHint: "",
   activeUrl: "",
   lastSeenAt: null
 }
@@ -51,6 +52,7 @@ async function askTabForState(tab) {
       profileName: "",
       accountName: "",
       pages: [],
+      pagesHint: "Open Facebook Pages Manager to read pages",
       activeUrl: tab?.url || "",
       lastSeenAt: new Date().toISOString()
     }
@@ -76,6 +78,7 @@ async function updateStateFromActiveTab() {
     profileName: settings.profileName || payload.profileName || "",
     accountName: payload.accountName || "",
     pages: Array.isArray(payload.pages) ? payload.pages : [],
+    pagesHint: payload.pagesHint || "",
     activeUrl: tab?.url || payload.url || "",
     lastSeenAt: new Date().toISOString()
   }
@@ -109,6 +112,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         profileName: settings.profileName || message.payload?.profileName || "",
         accountName: message.payload?.accountName || "",
         pages: Array.isArray(message.payload?.pages) ? message.payload.pages : [],
+        pagesHint: message.payload?.pagesHint || "",
         activeUrl: sender.tab?.url || "",
         lastSeenAt: new Date().toISOString()
       }

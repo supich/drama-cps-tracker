@@ -44,6 +44,8 @@ async function refresh() {
   accountName.textContent = state.accountName || "-"
   pagesText.textContent = state.pages?.length
     ? state.pages.map(page => page.name).join(", ")
+    : state.pagesHint
+      ? state.pagesHint
     : "-"
   renderLogs(response.logs || [])
 }

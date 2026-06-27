@@ -44,26 +44,55 @@ function normalizeName(value = "") {
   return value.replace(/\s+/g, " ").trim()
 }
 
+function cleanTitle(value = "") {
+  return normalizeName(value)
+    .replace(/^\(\d+\)\s*/, "")
+    .replace(/^\d+\+\s*/, "")
+    .replace(/\s*\|\s*Facebook\s*$/i, "")
+    .replace(/\s*-\s*Facebook\s*$/i, "")
+}
+
 function isUsefulName(value = "") {
   const text = normalizeName(value)
   if (!text || text.length < 2 || text.length > 80) return false
   if (GENERIC_LABELS.has(text.toLowerCase())) return false
+  if (/^(\(\d+\)\s*)?facebook$/i.test(text)) return false
   if (/^(facebook|meta business suite)$/i.test(text)) return false
   if (/^(see all|view all|manage|settings|create|edit|update)$/i.test(text)) return false
   if (/^(查看全部|管理|设置|创建|编辑|更新)$/.test(text)) return false
+  if (/更新个人主页|你的个人主页|您的个人主页/.test(text)) return false
   return true
 }
 
 function titleCandidate() {
-  const metaTitle = document.querySelector('meta[property="og:title"]')?.content
+  const metaTitle = cleanTitle(document.querySelector('meta[property="og:title"]')?.content)
   if (isUsefulName(metaTitle)) return normalizeName(metaTitle)
 
-  const pageTitle = document.title
-    .replace(/\s*\|\s*Facebook\s*$/i, "")
-    .replace(/\s*-\s*Facebook\s*$/i, "")
+  const pageTitle = cleanTitle(document.title)
   if (isUsefulName(pageTitle)) return normalizeName(pageTitle)
 
   return ""
+}
+
+function profileSlugCandidate() {
+  const firstPathPart = decodeURIComponent(location.pathname.split("/").filter(Boolean)[0] || "")
+  const badPathParts = new Set([
+    "",
+    "pages",
+    "groups",
+    "watch",
+    "marketplace",
+    "events",
+    "friends",
+    "notifications",
+    "messages",
+    "login",
+    "checkpoint",
+    "business"
+  ])
+  if (badPathParts.has(firstPathPart.toLowerCase())) return ""
+  if (!/^[a-z0-9_.-]{3,}$/i.test(firstPathPart)) return ""
+  return `@${firstPathPart}`
 }
 
 function readAccountName() {
@@ -90,7 +119,7 @@ function readAccountName() {
     if (isUsefulName(text)) return text
   }
 
-  return ""
+  return profileSlugCandidate()
 }
 
 function readPages() {
@@ -143,6 +172,10 @@ function readPages() {
 function collectState() {
   const isFacebook = /(^|\.)facebook\.com$/.test(location.hostname) ||
     /(^|\.)business\.facebook\.com$/.test(location.hostname)
+  const isPagesDirectory =
+    location.pathname.includes("/pages") ||
+    location.hostname.includes("business.facebook.com") ||
+    location.href.includes("business.facebook.com/latest")
   const pages = readPages()
 
   return {
@@ -150,6 +183,7 @@ function collectState() {
     profileName: "",
     accountName: readAccountName(),
     pages,
+    pagesHint: pages.length || isPagesDirectory ? "" : "Open Pages Manager to read pages",
     url: location.href
   }
 }
